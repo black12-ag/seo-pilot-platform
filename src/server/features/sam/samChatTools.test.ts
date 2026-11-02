@@ -2,11 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Tool } from "ai";
 import { z } from "zod";
 import { makeToolContext } from "@/server/mcp/tools/tool-test-support";
-import {
-  buildSamMcpTools,
-  toModelOutput,
-  waitingAuditStatusTool,
-} from "./samChatTools";
+import { buildSamMcpTools } from "./samChatTools";
+import { toModelOutput } from "./adaptMcpTool";
+import { waitingAuditStatusTool } from "./samAuditTools";
 
 vi.mock("cloudflare:workers", () => ({
   env: {},

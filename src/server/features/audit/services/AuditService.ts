@@ -1,3 +1,5 @@
+import { AuditScheduleRepository } from "../repositories/AuditScheduleRepository";
+import { launchScheduledAudit } from "./scheduledAuditLaunch";
 import { markOnboardingMilestone } from "@/server/email/onboarding-drip";
 import {
   auditRenderingUnavailableMessage,
@@ -44,7 +46,7 @@ async function resolveAuditLimitTier(
   return (await customerHasPaidPlan(customer.organizationId)) ? "paid" : "free";
 }
 
-async function startAudit(input: {
+type ManualAuditInput = {
   actorUserId: string;
   billingCustomer: BillingCustomerContext;
   projectId: string;
@@ -53,7 +55,17 @@ async function startAudit(input: {
   lighthouseStrategy?: LighthouseStrategy;
   limitTier: AuditLimitTier;
   renderJavaScript?: boolean;
-}) {
+};
+
+async function startAudit(
+  input: ManualAuditInput | { scheduledAttemptId: string; leaseToken: string },
+) {
+  if ("scheduledAttemptId" in input)
+    return launchScheduledAudit(
+      input.scheduledAttemptId,
+      input.leaseToken,
+      resolveAuditLimitTier,
+    );
   const renderJavaScript = input.renderJavaScript ?? false;
   if (renderJavaScript && !(await isAuditRenderingAllowed())) {
     throw new AppError(
@@ -263,7 +275,14 @@ async function remove(auditId: string, projectId: string) {
     throw new AppError("NOT_FOUND");
   }
 
-  if (audit.status === "running") {
+  const attempt = await AuditScheduleRepository.getAttempt(auditId);
+  if (attempt) {
+    const { stopScheduledAuditForDeletion } =
+      await import("./scheduledAuditRecovery");
+    await stopScheduledAuditForDeletion(auditId, projectId);
+  }
+
+  if (!attempt && audit.status === "running") {
     if (!audit.workflowInstanceId) {
       throw new AppError(
         "CONFLICT",

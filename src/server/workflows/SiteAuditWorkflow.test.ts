@@ -1,6 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkflowStep } from "cloudflare:workers";
 import type { runAuditPhases } from "./siteAuditWorkflowPhases";
+
+const { testDb } = await vi.hoisted(async () => {
+  const { createSiteAuthorityTestDb } =
+    await import("../features/site-authority/siteAuthorityTestDb");
+  return { testDb: await createSiteAuthorityTestDb() };
+});
+afterAll(testDb.close);
 
 const mocks = vi.hoisted(() => ({
   runAuditPhases: vi.fn<typeof runAuditPhases>(),
@@ -8,8 +15,19 @@ const mocks = vi.hoisted(() => ({
   failAudit: vi.fn(),
 }));
 
-vi.mock("cloudflare:workers", () => ({ WorkflowEntrypoint: vi.fn() }));
-vi.mock("@/db", () => ({ withPgClient: (fn: () => unknown) => fn() }));
+vi.mock("cloudflare:workers", () => ({
+  WorkflowEntrypoint: vi.fn(),
+  DurableObject: vi.fn(),
+  env: { DATABASE_PROVIDER: testDb.provider },
+}));
+vi.mock("cloudflare:workflows", () => ({
+  NonRetryableError: class extends Error {},
+}));
+vi.mock("@/db", () => ({
+  db: testDb.db,
+  withPgClient: (fn: () => unknown) => fn(),
+}));
+vi.mock("@/db/runBatch", () => ({ runBatch: testDb.runBatch }));
 vi.mock("@/server/workflows/pgStep", () => ({
   pgStep: (
     _step: unknown,

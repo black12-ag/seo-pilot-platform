@@ -1,3 +1,4 @@
+import { AuditEvidenceSummary } from "./results/AuditEvidenceSummary";
 import { AlertCircle } from "lucide-react";
 import { BackButton } from "@/client/components/PageHeader";
 import { useQuery } from "@tanstack/react-query";
@@ -191,6 +192,10 @@ export function AuditDetail({
               keeps happening.
             </AlertDescription>
           </Alert>
+        )}
+
+        {(isComplete || isFailed) && (
+          <AuditEvidenceSummary projectId={projectId} auditId={auditId} />
         )}
 
         {(isComplete || isFailed) && (

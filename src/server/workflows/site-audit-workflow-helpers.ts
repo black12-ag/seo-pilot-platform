@@ -148,6 +148,7 @@ export async function crawlPage(
     if (!fetched) return null;
     const { response, responseTimeMs, rateLimited } = fetched;
     let statusCode = response.status;
+    let renderingMode: "plain" | "rendered" = "plain";
     const xRobotsTag = response.headers.get("x-robots-tag");
     const headerCanonicalUrl = parseLinkHeaderCanonical(
       response.headers.get("link"),
@@ -197,6 +198,7 @@ export async function crawlPage(
       try {
         const page = await render(url);
         body = page.html;
+        renderingMode = "rendered";
         isHtml = true;
         // A challenge's or a 429's status was never the page's. Browser Run
         // reports the status it loaded; Context returns only pages that loaded.
@@ -228,6 +230,7 @@ export async function crawlPage(
         // The body was still fetched and buffered; report its size so the
         // crawl window's byte budget sees blocked/error pages too.
         htmlBytes: body.length,
+        renderingMode,
         rateLimited,
       });
     }
@@ -282,6 +285,9 @@ export async function crawlPage(
           ? await sha256Hex(analysis.bodyText)
           : null,
       isHtml: true,
+      fetchedAtMs: Date.now(),
+      contentAssessed: !javascriptShell,
+      renderingMode,
       javascriptShell,
       htmlBytes: body.length,
       rateLimited,
@@ -330,6 +336,7 @@ function emptyPageResult(input: {
   crawlDepth: number | null;
   inSitemap: boolean;
   htmlBytes?: number;
+  renderingMode?: "plain" | "rendered";
   rateLimited?: boolean;
 }): CrawledPageResult {
   return {
@@ -357,6 +364,9 @@ function emptyPageResult(input: {
     wordCount: 0,
     contentHash: null,
     isHtml: false,
+    fetchedAtMs: Date.now(),
+    contentAssessed: false,
+    renderingMode: input.renderingMode ?? "plain",
     htmlBytes: input.htmlBytes ?? 0,
     rateLimited: input.rateLimited ?? false,
     imagesTotal: 0,

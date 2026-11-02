@@ -1,3 +1,5 @@
+import { AuditScheduleSettings } from "../schedule/AuditScheduleSettings";
+import { AuditAttemptHistory } from "../schedule/AuditAttemptHistory";
 import { ConfirmDialog } from "@/client/components/ConfirmDialog";
 import { PageHeader } from "@/client/components/PageHeader";
 import { AuditHistorySection } from "@/client/features/audit/launch/AuditHistorySection";
@@ -43,6 +45,9 @@ export function LaunchView({
           canRenderJavaScript={controller.canRenderJavaScript}
           outOfCredits={controller.outOfCredits}
         />
+
+        <AuditScheduleSettings projectId={projectId} initialUrl={initialUrl} />
+        <AuditAttemptHistory projectId={projectId} />
 
         <AuditHistorySection
           projectId={projectId}

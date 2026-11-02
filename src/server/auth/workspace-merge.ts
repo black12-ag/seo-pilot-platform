@@ -1,3 +1,4 @@
+import { invalidateAuditSchedule } from "@/server/features/audit/repositories/auditScheduleProjectWrites";
 import { env } from "cloudflare:workers";
 import { and, asc, eq, inArray, isNull, like, sql } from "drizzle-orm";
 import { chunk, firstBy, identity, sort } from "remeda";
@@ -11,6 +12,8 @@ import {
 import { getAuthMode } from "@/lib/auth-mode";
 import { AppError } from "@/server/lib/errors";
 import {
+  auditSchedules,
+  auditScheduleAttempts,
   ga4Connections,
   gscConnections,
   organization,
@@ -135,6 +138,18 @@ async function mergeLegacyWorkspaces() {
 
   await runBatch((tx) => [
     ...legacyIds.map((id) => lockAuthorityOrganization(tx, id)),
+    // Fail atomically under the organization locks before transferring uncertain work.
+    ...legacyIds.map((id) =>
+      tx
+        .update(organization)
+        .set({ name: sql`null` })
+        .where(
+          and(
+            eq(organization.id, id),
+            sql`exists (select 1 from audit_schedule_attempts a where a.organization_id = ${id} and (a.launch_state in ('pending','launching','running') or a.billing_state <> 'settled'))`,
+          ),
+        ),
+    ),
     ...transferredProjects.map((project) =>
       lockProject(tx, project.id, project.organizationId),
     ),
@@ -144,6 +159,36 @@ async function mergeLegacyWorkspaces() {
         nowMs: Date.now(),
       }),
     ),
+    ...transferredProjects.flatMap((project) =>
+      invalidateAuditSchedule(tx, project.id, project.organizationId, {
+        reason: "organization_changed",
+        nowMs: Date.now(),
+      }),
+    ),
+    ...transferredProjects.flatMap((project) => [
+      tx
+        .update(auditSchedules)
+        .set(repointToShared)
+        .where(
+          and(
+            eq(auditSchedules.projectId, project.id),
+            eq(auditSchedules.organizationId, project.organizationId),
+            eq(auditSchedules.state, "paused"),
+            sql`exists (select 1 from projects p where p.id = ${project.id} and p.organization_id = ${project.organizationId})`,
+          ),
+        ),
+      tx
+        .update(auditScheduleAttempts)
+        .set(repointToShared)
+        .where(
+          and(
+            eq(auditScheduleAttempts.projectId, project.id),
+            eq(auditScheduleAttempts.organizationId, project.organizationId),
+            eq(auditScheduleAttempts.billingState, "settled"),
+            sql`${auditScheduleAttempts.launchState} not in ('pending','launching','running') and exists (select 1 from projects p where p.id = ${project.id} and p.organization_id = ${project.organizationId})`,
+          ),
+        ),
+    ]),
     ...conflictingDefaults.map((project) =>
       tx
         .update(projects)

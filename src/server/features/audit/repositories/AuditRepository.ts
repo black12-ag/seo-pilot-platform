@@ -1,3 +1,5 @@
+import { runBatch } from "@/db/runBatch";
+import { markResultDeletedWrites } from "./AuditEvidenceRepository";
 /**
  * Data access layer for site audit tables.
  * Provider-aware (D1 or Postgres) via the `@/db` handle. Covers audits,
@@ -13,132 +15,24 @@ import {
   auditPages,
   projects,
 } from "@/db/schema";
-import { executeInBatches } from "@/db/runBatch";
+
+import {
+  auditResultSelect,
+  writeAuditResults,
+  createAudit,
+  updateAuditStart,
+  updateAuditProgress,
+  completeAudit,
+  failAudit,
+} from "./auditRunWrites";
 import { insertIssues } from "./auditIssueWrites";
 import { deterministicAuditRowId } from "@/server/lib/audit/ids";
 import type { DetectedIssue } from "@/server/lib/audit/issues/page-reporters";
 import type {
-  AuditConfig,
   CrawledPageResult,
   LighthouseResult,
 } from "@/server/lib/audit/types";
 import type { PageFetchClass } from "@/shared/audit-fetch-class";
-
-async function createAudit(data: {
-  id: string;
-  projectId: string;
-  startedByUserId: string;
-  startUrl: string;
-  workflowInstanceId: string;
-  config: AuditConfig;
-  pagesTotal: number;
-  lighthouseTotal: number;
-}) {
-  await db.insert(audits).values({
-    id: data.id,
-    projectId: data.projectId,
-    startedByUserId: data.startedByUserId,
-    startUrl: data.startUrl,
-    workflowInstanceId: data.workflowInstanceId,
-    config: JSON.stringify(data.config),
-    status: "running",
-    pagesTotal: data.pagesTotal,
-    lighthouseTotal: data.lighthouseTotal,
-    currentPhase: "discovery",
-  });
-}
-
-/** Records where the crawl really starts, once the workflow has probed the site. */
-async function updateAuditStart(
-  auditId: string,
-  startUrl: string,
-  config: AuditConfig,
-) {
-  await db
-    .update(audits)
-    .set({ startUrl, config: JSON.stringify(config) })
-    .where(eq(audits.id, auditId));
-}
-
-async function updateAuditProgress(
-  auditId: string,
-  workflowInstanceId: string,
-  data: {
-    pagesCrawled?: number;
-    pagesTotal?: number;
-    lighthouseTotal?: number;
-    lighthouseCompleted?: number;
-    lighthouseFailed?: number;
-    currentPhase?: string;
-  },
-) {
-  await db
-    .update(audits)
-    .set(data)
-    .where(
-      and(
-        eq(audits.id, auditId),
-        eq(audits.workflowInstanceId, workflowInstanceId),
-      ),
-    );
-}
-
-async function completeAudit(
-  auditId: string,
-  workflowInstanceId: string,
-  data: {
-    pagesCrawled: number;
-    pagesTotal: number;
-  },
-) {
-  await db
-    .update(audits)
-    .set({
-      status: "completed",
-      completedAt: new Date().toISOString(),
-      currentPhase: "completed",
-      ...data,
-    })
-    .where(
-      and(
-        eq(audits.id, auditId),
-        eq(audits.workflowInstanceId, workflowInstanceId),
-      ),
-    );
-}
-
-async function failAudit(
-  auditId: string,
-  workflowInstanceId: string,
-  errorInfo?: {
-    errorCode: string;
-    errorDetail: string;
-    failedPhase: string | null;
-  },
-) {
-  // Only a running audit can transition to failed: the getStatus reconciler
-  // races the workflow's own finalize, and without this guard it could flip
-  // a just-completed audit to failed.
-  await db
-    .update(audits)
-    .set({
-      status: "failed",
-      completedAt: new Date().toISOString(),
-      currentPhase: "failed",
-      ...(errorInfo && {
-        errorCode: errorInfo.errorCode,
-        errorDetail: errorInfo.errorDetail,
-        failedPhase: errorInfo.failedPhase,
-      }),
-    })
-    .where(
-      and(
-        eq(audits.id, auditId),
-        eq(audits.workflowInstanceId, workflowInstanceId),
-        eq(audits.status, "running"),
-      ),
-    );
-}
 
 async function getAuditForWorkflow(
   auditId: string,
@@ -168,7 +62,7 @@ async function insertCrawledBatch(
   pages: CrawledPageResult[],
   issues: DetectedIssue[],
 ) {
-  await executeInBatches(pages, (tx, page) => {
+  await writeAuditResults(auditId, pages, (tx, page) => {
     const dataColumns = {
       url: page.url,
       statusCode: page.statusCode,
@@ -200,10 +94,21 @@ async function insertCrawledBatch(
       crawlDepth: page.crawlDepth,
       inSitemap: page.inSitemap,
       responseTimeMs: page.responseTimeMs,
+      fetchedAtMs: page.fetchedAtMs ?? null,
+      contentAssessed: page.contentAssessed ?? null,
+      isHtml: page.isHtml,
+      isLikelyJsShell: page.javascriptShell ?? null,
+      renderingMode: page.renderingMode ?? null,
     };
     return tx
       .insert(auditPages)
-      .values({ id: page.id, auditId, ...dataColumns })
+      .select(
+        auditResultSelect(
+          auditPages,
+          { id: page.id, auditId, ...dataColumns },
+          auditId,
+        ),
+      )
       .onConflictDoUpdate({ target: auditPages.id, set: dataColumns });
   });
 
@@ -239,12 +144,15 @@ async function insertLighthouseResults(
   );
   // The persistence step is retryable after its paid provider result has been
   // checkpointed, so repeated writes must stay idempotent.
-  await executeInBatches(rows, (tx, row) => {
+  await writeAuditResults(auditId, rows, (tx, row) => {
     const { id: _id, auditId: _auditId, ...dataColumns } = row;
-    return tx.insert(auditLighthouseResults).values(row).onConflictDoUpdate({
-      target: auditLighthouseResults.id,
-      set: dataColumns,
-    });
+    return tx
+      .insert(auditLighthouseResults)
+      .select(auditResultSelect(auditLighthouseResults, row, auditId))
+      .onConflictDoUpdate({
+        target: auditLighthouseResults.id,
+        set: dataColumns,
+      });
   });
 }
 
@@ -422,9 +330,12 @@ async function getLighthouseResultById(input: {
 }
 
 async function deleteAuditForProject(auditId: string, projectId: string) {
-  await db
-    .delete(audits)
-    .where(and(eq(audits.id, auditId), eq(audits.projectId, projectId)));
+  await runBatch((tx) => [
+    ...markResultDeletedWrites(tx, auditId, projectId),
+    tx
+      .delete(audits)
+      .where(and(eq(audits.id, auditId), eq(audits.projectId, projectId))),
+  ]);
 }
 
 export const AuditRepository = {

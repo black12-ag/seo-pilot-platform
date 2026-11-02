@@ -137,6 +137,30 @@ export async function handleImport(request: Request): Promise<Response> {
     input.rows.some((row) => row.length !== input.columns.length)
   )
     return new Response("Schema mismatch", { status: 400 });
+  if (input.table === "audit_schedules") {
+    const stateColumn = input.columns.indexOf("state");
+    const dueColumn = input.columns.indexOf("next_due_at_ms");
+    const versionColumn = input.columns.indexOf("version");
+    if (
+      [stateColumn, dueColumn, versionColumn].some((index) => index < 0) ||
+      input.rows.some(
+        (row) =>
+          typeof row[versionColumn] !== "number" ||
+          !Number.isSafeInteger(row[versionColumn]) ||
+          Number(row[versionColumn]) < 1 ||
+          Number(row[versionColumn]) >= Number.MAX_SAFE_INTEGER,
+      )
+    )
+      return new Response(
+        "Schedule restore requires state, version and next due columns",
+        { status: 400 },
+      );
+    for (const row of input.rows) {
+      row[stateColumn] = "paused";
+      row[dueColumn] = null;
+      row[versionColumn] = Number(row[versionColumn]) + 1;
+    }
+  }
   const insert = `INSERT INTO "${input.table}" (${input.columns.map((name) => `"${name}"`).join(",")}) VALUES (${input.columns.map(() => "?").join(",")}) ON CONFLICT DO NOTHING`;
   await runD1ImportBatch(
     input.rows.map((row) => env.DB.prepare(insert).bind(...row)),

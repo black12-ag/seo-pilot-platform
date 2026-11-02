@@ -1,3 +1,4 @@
+import { invalidateAuditSchedule } from "@/server/features/audit/repositories/auditScheduleProjectWrites";
 import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
@@ -138,6 +139,14 @@ async function writeProjectWebsite(
           ? sql`p.archived_at is null and p.domain is not null`
           : sql`p.archived_at is null and (p.domain is null or p.domain <> ${values.domain})`,
     }),
+    ...invalidateAuditSchedule(tx, projectId, organizationId, {
+      reason: "project_changed",
+      nowMs: Date.now(),
+      condition:
+        values.domain === null
+          ? sql`p.archived_at is null and p.domain is not null`
+          : sql`p.archived_at is null and (p.domain is null or p.domain <> ${values.domain})`,
+    }),
     tx
       .update(projects)
       .set(values)
@@ -215,6 +224,11 @@ async function restoreProject(projectId: string, organizationId: string) {
       nowMs: Date.now(),
       condition: sql`p.archived_at is not null`,
     }),
+    ...invalidateAuditSchedule(tx, projectId, organizationId, {
+      reason: "project_archived",
+      nowMs: Date.now(),
+      condition: sql`p.archived_at is not null`,
+    }),
     tx
       .update(projects)
       .set({ archivedAt: null })
@@ -234,6 +248,11 @@ async function archiveProject(projectId: string, organizationId: string) {
   await runBatch((tx) => [
     lockProject(tx, projectId, organizationId),
     ...invalidateSiteAuthority(tx, projectId, organizationId, {
+      reason: "project_archived",
+      nowMs: Date.now(),
+      condition: sql`p.archived_at is null`,
+    }),
+    ...invalidateAuditSchedule(tx, projectId, organizationId, {
       reason: "project_archived",
       nowMs: Date.now(),
       condition: sql`p.archived_at is null`,

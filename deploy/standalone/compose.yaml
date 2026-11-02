@@ -59,6 +59,7 @@ services:
     environment:
       <<: *storage
       AUTH_MODE: ${AUTH_MODE:-password}
+      AUDIT_RECURRING_POLICY: ${AUDIT_RECURRING_POLICY:-}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
       CONTEXT_API_KEY: ${CONTEXT_API_KEY:-}
       DATAFORSEO_API_KEY: ${DATAFORSEO_API_KEY:-}

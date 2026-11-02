@@ -1,59 +1,19 @@
-import { readFileSync } from "node:fs";
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
-import type { runBatch } from "@/db/runBatch";
-import type * as ContextRepositoryModule from "@/server/features/project-context/repositories/ProjectContextRepository";
-
-const { getProject, listCompetitors } = vi.hoisted(() => ({
-  getProject: vi.fn(),
-  listCompetitors: vi.fn(),
-}));
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+const { testDb } = await vi.hoisted(async () => {
+  const { createSiteAuthorityTestDb } =
+    await import("../../site-authority/siteAuthorityTestDb");
+  return { testDb: await createSiteAuthorityTestDb() };
+});
 vi.mock("cloudflare:workers", () => ({
-  env: { DATABASE_PROVIDER: "d1" },
+  env: { DATABASE_PROVIDER: testDb.provider },
+  DurableObject: vi.fn(),
   waitUntil: vi.fn(),
 }));
-vi.mock("@/db", () => ({ db: {} }));
-vi.mock("@/db/runBatch", () => ({
-  runBatch: async (build: Parameters<typeof runBatch>[0]) => {
-    if (beforeWrite) await beforeWrite();
-    // libsql executes the production Drizzle statements against real SQLite.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- same Drizzle query surface as the D1 batch executor
-    const executor = testDb as unknown as Parameters<typeof build>[0];
-    for (const statement of build(executor)) await statement;
-  },
+vi.mock("@/db", () => ({ db: testDb.db }));
+vi.mock("@/db/runBatch", () => ({ runBatch: testDb.runBatch }));
+vi.mock("@/server/features/ai-visibility/services/aiVisibilityRuns", () => ({
+  startRun: vi.fn(),
 }));
-vi.mock("@/server/features/projects/repositories/ProjectRepository", () => ({
-  ProjectRepository: { getProjectForOrganization: getProject },
-}));
-vi.mock(
-  "@/server/features/project-context/repositories/ProjectContextRepository",
-  async () => {
-    const { ProjectContextRepository } = await vi.importActual<
-      typeof ContextRepositoryModule
-    >(
-      "@/server/features/project-context/repositories/ProjectContextRepository",
-    );
-    return {
-      ProjectContextRepository: {
-        ...ProjectContextRepository,
-        listCompetitors,
-      },
-    };
-  },
-);
-vi.mock(
-  "@/server/features/ai-visibility/services/websiteTrackingSetup",
-  () => ({ prepareWebsiteTracking: async () => null }),
-);
 vi.mock("@/server/features/projects/services/websiteResearch", () => ({
   researchWebsite: vi.fn(),
 }));
@@ -63,21 +23,12 @@ vi.mock("@/server/billing/subscription", () => ({
 vi.mock("@/server/lib/runtime-env", () => ({
   isHostedServerAuthMode: async () => false,
 }));
-
+import { projectCompetitors } from "@/db/schema";
 import { ProjectWebsiteService } from "./ProjectWebsiteService";
 import { customer } from "@/server/features/ai-visibility/services/aiVisibilityTestFixtures";
 
-const client = createClient({ url: "file::memory:" });
-const testDb = drizzle(client);
-let beforeWrite: (() => Promise<void>) | null;
 const projectId = "4a5b6c7d-0000-4000-8000-000000000000";
-const project = {
-  id: projectId,
-  name: "Saved name",
-  domain: null,
-  locationCode: 2840,
-  languageCode: "en",
-};
+const project = { name: "Saved name" };
 const accepted = {
   projectId,
   name: "Researched name",
@@ -106,55 +57,25 @@ const accepted = {
   suggestedKeywords: ["site audit"],
 };
 
-beforeAll(async () => {
-  // Use the actual context migration so conflict keys match production.
-  await client.executeMultiple(
-    [
-      `CREATE TABLE "user" (id text PRIMARY KEY); CREATE TABLE projects (id text PRIMARY KEY, organization_id text, name text NOT NULL, domain text, archived_at text, ai_research_keywords text);`,
-      readFileSync("drizzle/sqlite/0063_site_authority.sql", "utf8").replaceAll(
-        "--> statement-breakpoint",
-        "",
-      ),
-      ...readFileSync("drizzle/sqlite/0042_project_memory.sql", "utf8")
-        .split("--> statement-breakpoint")
-        .filter((sql) => !sql.includes("DROP TABLE")),
-    ].join("\n"),
-  );
-});
-afterAll(() => client.close());
+afterAll(testDb.close);
 beforeEach(async () => {
-  beforeWrite = null;
-  getProject.mockResolvedValue(project);
-  listCompetitors.mockResolvedValue([]);
-  await client.executeMultiple(
-    "DELETE FROM project_competitors; DELETE FROM project_context_sections; DELETE FROM projects;",
-  );
-  await client.execute({
-    sql: "INSERT INTO projects (id, organization_id, name) VALUES (?, ?, ?)",
-    args: [projectId, customer.organizationId, project.name],
-  });
+  await testDb.seedProject();
+  await testDb.executeMultiple(`DELETE FROM projects;
+    INSERT INTO projects (id, organization_id, name, location_code, language_code) VALUES ('${projectId}', '${customer.organizationId}', '${project.name}', 2840, 'en');`);
 });
 
 async function saveContext() {
-  await client.execute({
-    sql: "INSERT INTO project_context_sections (project_id, key, content, updated_by) VALUES (?, 'business_overview', 'User overview', 'user')",
-    args: [projectId],
-  });
-  await client.execute({
-    sql: "INSERT INTO project_competitors (id, project_id, domain, name, notes, updated_by) VALUES ('saved', ?, 'rival.com', 'User rival', 'User notes', 'user')",
-    args: [projectId],
-  });
+  await testDb.executeMultiple(`INSERT INTO project_context_sections (project_id, key, content, updated_by) VALUES ('${projectId}', 'business_overview', 'User overview', 'user');
+    INSERT INTO project_competitors (id, project_id, domain, name, notes, updated_by) VALUES ('saved', '${projectId}', 'rival.com', 'User rival', 'User notes', 'user');`);
 }
 
 describe("ProjectWebsiteService.save", () => {
   it("fills missing fields without replacing an existing project name", async () => {
     await ProjectWebsiteService.save(accepted, customer, "user");
     expect(
-      (
-        await client.execute(
-          "SELECT name, domain, ai_research_keywords FROM projects",
-        )
-      ).rows,
+      await testDb.execute(
+        "SELECT name, domain, ai_research_keywords FROM projects",
+      ),
     ).toEqual([
       {
         name: project.name,
@@ -165,13 +86,15 @@ describe("ProjectWebsiteService.save", () => {
     expect(
       new Set(
         (
-          await client.execute("SELECT domain FROM project_competitors")
-        ).rows.map((row) => row.domain),
+          await testDb.db
+            .select({ domain: projectCompetitors.domain })
+            .from(projectCompetitors)
+        ).map((row) => row.domain),
       ),
     ).toEqual(new Set(accepted.competitors.map((row) => row.domain)));
     expect(
-      (await client.execute("SELECT content FROM project_context_sections"))
-        .rows[0]?.content,
+      (await testDb.execute("SELECT content FROM project_context_sections"))[0]
+        ?.content,
     ).toBe(accepted.overview);
   });
 
@@ -180,23 +103,20 @@ describe("ProjectWebsiteService.save", () => {
     async (timing) => {
       const edit = async () => {
         await saveContext();
-        await client.execute(
+        await testDb.execute(
           "UPDATE projects SET name = 'User name', domain = 'user.com', ai_research_keywords = 'user keyword'",
         );
       };
       if (timing === "before review") {
         await edit();
-        listCompetitors.mockResolvedValue([{ domain: "rival.com" }]);
-      } else beforeWrite = edit;
+      } else testDb.beforeNextBatch(edit);
 
       await ProjectWebsiteService.save(accepted, customer, "user");
 
       expect(
-        (
-          await client.execute(
-            "SELECT name, domain, ai_research_keywords FROM projects",
-          )
-        ).rows,
+        await testDb.execute(
+          "SELECT name, domain, ai_research_keywords FROM projects",
+        ),
       ).toEqual([
         {
           name: "User name",
@@ -205,18 +125,14 @@ describe("ProjectWebsiteService.save", () => {
         },
       ]);
       expect(
-        (
-          await client.execute(
-            "SELECT content, updated_by FROM project_context_sections",
-          )
-        ).rows,
+        await testDb.execute(
+          "SELECT content, updated_by FROM project_context_sections",
+        ),
       ).toEqual([{ content: "User overview", updated_by: "user" }]);
       expect(
-        (
-          await client.execute(
-            "SELECT domain, name, notes FROM project_competitors",
-          )
-        ).rows,
+        await testDb.execute(
+          "SELECT domain, name, notes FROM project_competitors",
+        ),
       ).toEqual([
         { domain: "rival.com", name: "User rival", notes: "User notes" },
       ]);

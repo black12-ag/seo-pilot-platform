@@ -1,4 +1,4 @@
-import { and, countDistinct, eq, gte, lt } from "drizzle-orm";
+import { and, countDistinct, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { auditIssues, audits, user } from "@/db/schema";
 
@@ -34,7 +34,14 @@ export async function getAuditsCompletedSince(since: string) {
     })
     .from(audits)
     .innerJoin(user, eq(user.id, audits.startedByUserId))
-    .where(and(eq(audits.status, "completed"), gte(audits.completedAt, since)));
+    .where(
+      and(
+        eq(audits.status, "completed"),
+        eq(audits.isScheduled, false),
+        gte(audits.completedAt, since),
+        sql`not exists (select 1 from audit_schedule_attempts a where a.id = ${audits.id})`,
+      ),
+    );
 }
 
 export async function hasCompletedAuditBefore(userId: string, before: string) {
@@ -45,7 +52,9 @@ export async function hasCompletedAuditBefore(userId: string, before: string) {
       and(
         eq(audits.startedByUserId, userId),
         eq(audits.status, "completed"),
+        eq(audits.isScheduled, false),
         lt(audits.completedAt, before),
+        sql`not exists (select 1 from audit_schedule_attempts a where a.id = ${audits.id})`,
       ),
     )
     .limit(1);

@@ -1,3 +1,6 @@
+import { AuditScheduleRepository } from "../repositories/AuditScheduleRepository";
+import { sealAuditEvidence } from "./auditEvidenceManifest";
+import { observeScheduledWorkflow } from "./scheduledAuditLaunch";
 /**
  * Reconciles audits stuck in "running" with the actual state of their
  * Cloudflare Workflow instance.
@@ -16,10 +19,7 @@ import { db } from "@/db";
 import { audits, projects } from "@/db/schema";
 import { getDatabaseProvider } from "@/db/provider";
 import { AuditRepository } from "@/server/features/audit/repositories/AuditRepository";
-import {
-  classifyAuditError,
-  type AuditErrorInfo,
-} from "@/server/lib/audit/audit-errors";
+import { type AuditErrorInfo } from "@/server/lib/audit/audit-errors";
 import { captureServerEvent } from "@/server/lib/posthog";
 
 /**
@@ -50,45 +50,49 @@ export async function reconcileRunningAudit(
   audit: RunningAudit,
 ): Promise<AuditErrorInfo | null> {
   if (!audit.workflowInstanceId) return null;
+  // Recurrence recovery owns its launch leases, intent and internal reservation.
+  if (await AuditScheduleRepository.getAttempt(audit.id)) return null;
 
-  let errorInfo: AuditErrorInfo | null = null;
-  try {
-    const instance = await env.SITE_AUDIT_WORKFLOW.get(
+  const observation = await observeScheduledWorkflow(
+    env.SITE_AUDIT_WORKFLOW,
+    audit.workflowInstanceId,
+  );
+  if (observation.state === "active" || observation.state === "unknown")
+    return null;
+  if (
+    observation.state === "missing" &&
+    !isOlderThan(audit.startedAt, INSTANCE_LOST_GRACE_MS)
+  )
+    return null;
+  const errorInfo: AuditErrorInfo = {
+    errorCode: observation.state === "missing" ? "instance_lost" : "unknown",
+    errorDetail:
+      observation.state === "missing"
+        ? "Workflow instance not found"
+        : `Workflow instance ${observation.status}`,
+  };
+  const current = await AuditRepository.getAuditForWorkflow(
+    audit.id,
+    audit.workflowInstanceId,
+  );
+  if (!current || current.status !== "running") return null;
+  if (current.requestedConfig) {
+    const sealed = await sealAuditEvidence({
+      auditId: audit.id,
+      projectId: current.projectId,
+      workflowInstanceId: audit.workflowInstanceId,
+      status: "failed",
+      ...errorInfo,
+    });
+    if (!sealed) return null;
+  } else {
+    const failed = await AuditRepository.failAudit(
+      audit.id,
       audit.workflowInstanceId,
+      { ...errorInfo, failedPhase: audit.currentPhase },
     );
-    const status = await instance.status();
-    if (status.status === "errored" || status.status === "terminated") {
-      errorInfo = status.error
-        ? classifyAuditError(
-            typeof status.error === "string"
-              ? status.error
-              : (status.error.message ?? JSON.stringify(status.error)),
-          )
-        : {
-            errorCode: "unknown",
-            errorDetail: `Workflow instance ${status.status}`,
-          };
-    }
-  } catch (error) {
-    // Instance not found (never created, or expired from Workflows
-    // retention). Past the grace window that means the audit can never
-    // finish — without this branch such rows stay "running" forever.
-    // Transient status/control-plane errors must NOT fail a live audit,
-    // so only a confirmed not-found counts.
-    const message = error instanceof Error ? error.message : String(error);
-    if (!/not[ _]?found/i.test(message)) return null;
-    if (!isOlderThan(audit.startedAt, INSTANCE_LOST_GRACE_MS)) return null;
-    errorInfo = {
-      errorCode: "instance_lost",
-      errorDetail: "Workflow instance not found",
-    };
+    if (!failed) return null;
   }
-  if (!errorInfo) return null;
-
-  await AuditRepository.failAudit(audit.id, audit.workflowInstanceId, {
-    ...errorInfo,
-    failedPhase: audit.currentPhase,
-  });
   return errorInfo;
 }
 

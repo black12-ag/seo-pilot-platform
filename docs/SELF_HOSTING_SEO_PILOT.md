@@ -58,6 +58,12 @@ exact HTTPS origin and its file or DNS instructions. Verification does not
 connect a CMS or publish a change. The complete content/publishing automation
 flow remains in development.
 
+The development branch's [recurring audit guide](../web/content/docs/self-hosting/recurring-audits.md)
+describes opt-in plain HTTP schedules, the finite installation policy, daily
+allowances and evidence. Keep the policy unset until the installation and
+schedules have been reviewed. Paid recurring rendering/Lighthouse and the
+remaining complete-platform modules are still in development.
+
 ## Stop and restart
 
 ```sh

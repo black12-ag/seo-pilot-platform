@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   index,
+  uniqueIndex,
   integer,
   pgTable,
   real,
@@ -30,12 +32,19 @@ export const audits = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     startedByUserId: text("started_by_user_id").notNull(),
     startUrl: text("start_url").notNull(),
+    isScheduled: boolean("is_scheduled").notNull().default(false),
+    requestedStartUrl: text("requested_start_url"),
+    requestedConfig: text("requested_config"),
     status: text("status", {
       enum: ["running", "completed", "failed"],
     })
       .notNull()
       .default("running"),
     workflowInstanceId: text("workflow_instance_id"),
+    evidenceSealToken: text("evidence_seal_token"),
+    evidenceSealStartedAtMs: bigint("evidence_seal_started_at_ms", {
+      mode: "number",
+    }),
     // JSON config: { maxPages, lighthouseStrategy }
     config: text("config").notNull().default("{}"),
     // Progress & summary
@@ -56,6 +65,7 @@ export const audits = pgTable(
     completedAt: timestampColumn("completed_at"),
   },
   (table) => [
+    uniqueIndex("audits_project_id_id_uidx").on(table.projectId, table.id),
     index("audits_project_id_idx").on(table.projectId),
     index("audits_started_by_user_id_idx").on(table.startedByUserId),
   ],
@@ -112,6 +122,11 @@ export const auditPages = pgTable(
     fetchClass: text("fetch_class", { enum: PAGE_FETCH_CLASSES })
       .notNull()
       .default("ok"),
+    fetchedAtMs: bigint("fetched_at_ms", { mode: "number" }),
+    contentAssessed: boolean("content_assessed"),
+    isHtml: boolean("is_html"),
+    isLikelyJsShell: boolean("is_likely_js_shell"),
+    renderingMode: text("rendering_mode", { enum: ["plain", "rendered"] }),
     // Performance
     responseTimeMs: integer("response_time_ms"),
   },

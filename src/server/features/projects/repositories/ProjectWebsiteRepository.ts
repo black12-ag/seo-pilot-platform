@@ -1,3 +1,4 @@
+import { invalidateAuditSchedule } from "@/server/features/audit/repositories/auditScheduleProjectWrites";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { chunk } from "remeda";
 import { runBatch } from "@/db/runBatch";
@@ -36,6 +37,11 @@ export async function saveWebsiteSetup(
     lockProject(tx, input.projectId, organizationId),
     ...invalidateSiteAuthority(tx, input.projectId, organizationId, {
       reason: "website_changed",
+      nowMs: Date.now(),
+      condition: sql`p.archived_at is null and p.domain is null`,
+    }),
+    ...invalidateAuditSchedule(tx, input.projectId, organizationId, {
+      reason: "project_changed",
       nowMs: Date.now(),
       condition: sql`p.archived_at is null and p.domain is null`,
     }),

@@ -1,4 +1,5 @@
-import { env, type WorkflowStep } from "cloudflare:workers";
+import { assertAuditExecutionAllowed } from "@/server/features/audit/services/auditExecutionFence";
+import { type WorkflowStep } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
 import type { RobotsResult } from "@/server/lib/audit/discovery";
 import type { AuditConfig, CrawledPageResult } from "@/server/lib/audit/types";
@@ -18,15 +19,11 @@ import {
   type CrawlThrottleState,
 } from "@/server/lib/audit/crawl-throttle";
 import { crawlPage } from "@/server/workflows/site-audit-workflow-helpers";
-import {
-  estimateRenderingCredits,
-  renderUsageCredits,
-  type RenderUsage,
-} from "@/shared/audit-rendering";
+import { type RenderUsage } from "@/shared/audit-rendering";
 import type { CrawlerAccess } from "@/shared/crawler-access";
 import { pgStep } from "@/server/workflows/pgStep";
 import { CRAWL_CHUNK_STEP } from "@/server/workflows/auditStepConfigs";
-import { getContextFetch } from "@/server/lib/provider-access";
+import { createChunkRendering } from "./siteAuditCrawlRendering";
 import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
 
 /**
@@ -64,6 +61,7 @@ const FIRST_PERSIST_BATCH_SIZE = 5;
 const MAX_QUEUED_PERSIST_BATCHES = 2;
 
 type CrawlPhaseParams = {
+  scheduledAttemptId?: string;
   auditId: string;
   workflowInstanceId: string;
   origin: string;
@@ -190,6 +188,7 @@ async function runCrawlChunk(
 ): Promise<CrawlChunkResult> {
   const { auditId, workflowInstanceId, origin, maxPages, robots, chunkNo } =
     input;
+  await assertAuditExecutionAllowed(auditId, input.scheduledAttemptId);
   const scratchpad = getAuditScratchpad(auditId);
   const renderDeadlineAt = input.renderHold?.deadlineAt ?? Infinity;
   let previousThrottle =
@@ -318,36 +317,10 @@ async function runCrawlChunk(
       });
   };
 
-  // This attempt's rendering counts, returned in the step result. The audit's
-  // credit lock is settled once, when the audit ends.
-  const renderUsage: RenderUsage = { cloudflareAttempts: 0, contextCredits: 0 };
-  // Whether `pending` in-flight pages and one more, each at the Context worst
-  // case, still fit the hold on top of what this audit has rendered so far.
-  const canAffordRender = (pending: number) =>
-    !input.renderHold ||
-    renderUsageCredits({
-      cloudflareAttempts:
-        input.renderUsage.cloudflareAttempts + renderUsage.cloudflareAttempts,
-      contextCredits:
-        input.renderUsage.contextCredits + renderUsage.contextCredits,
-    }) +
-      estimateRenderingCredits(pending + 1).high <=
-      input.renderHold.credits;
-  const render = input.renderJavaScript
-    ? async (url: string) => {
-        const { RenderedPageService } =
-          await import("@/server/lib/audit/rendered-page");
-        return RenderedPageService.renderPage(url, {
-          browser: env.BROWSER,
-          // Behind an Every App gateway its calls are the audit's
-          // organization's, named around the Workflow's run() and carried
-          // into this step by pgStep.
-          contextFetch: await getContextFetch(),
-          auditId,
-          usage: renderUsage,
-        });
-      }
-    : undefined;
+  const { renderUsage, canAffordRender, render } = createChunkRendering({
+    ...input,
+    previousUsage: input.renderUsage,
+  });
 
   const launch = (entry: ClaimedUrl) => {
     const promise = crawlPage(

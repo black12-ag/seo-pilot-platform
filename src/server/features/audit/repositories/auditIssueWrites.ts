@@ -1,7 +1,7 @@
-import { chunk } from "remeda";
-import { db } from "@/db";
+import { sql } from "drizzle-orm";
 import { getDatabaseProvider } from "@/db/provider";
-import { DB_BATCH_SIZE, runBatch } from "@/db/runBatch";
+import { DB_BATCH_SIZE } from "@/db/runBatch";
+import { auditResultSelect, writeAuditResults } from "./auditRunWrites";
 import { auditIssues } from "@/db/schema";
 import { deterministicAuditRowId } from "@/server/lib/audit/ids";
 import type { DetectedIssue } from "@/server/lib/audit/issues/page-reporters";
@@ -28,18 +28,21 @@ export async function insertIssues(auditId: string, issues: DetectedIssue[]) {
         detailsJson: issue.details ? JSON.stringify(issue.details) : null,
       })),
     );
-    // Each outer batch commits independently. Deterministic IDs let retries
-    // skip committed rows without repeating thousands of individual inserts.
-    if (isPostgres) {
-      await db.insert(auditIssues).values(issueRows).onConflictDoNothing();
-    } else {
-      // Seven bound columns per row: D1 permits 100 parameters per statement.
-      // Send the statements together in one atomic D1 batch request.
-      await runBatch((tx) =>
-        chunk(issueRows, 14).map((rows) =>
-          tx.insert(auditIssues).values(rows).onConflictDoNothing(),
-        ),
-      );
+    // D1 limits compound SELECTs to five terms; every term retains the seal guard.
+    const groups = [];
+    for (let offset = 0; offset < issueRows.length; offset += 5) {
+      groups.push(issueRows.slice(offset, offset + 5));
     }
+    await writeAuditResults(auditId, groups, (tx, rows) =>
+      tx
+        .insert(auditIssues)
+        .select(
+          sql.join(
+            rows.map((row) => auditResultSelect(auditIssues, row, auditId)),
+            sql` union all `,
+          ),
+        )
+        .onConflictDoNothing(),
+    );
   }
 }

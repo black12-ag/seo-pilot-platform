@@ -9,6 +9,7 @@ import { resolveUserContextFromHeaders } from "@/middleware/ensure-user/resolve"
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
 import { SamSessionRepository } from "@/server/features/sam/SamSessionRepository";
 import { runScheduledRankChecks } from "@/server/features/rank-tracking/services/scheduledRankChecks";
+import { runScheduledAudits } from "@/server/features/audit/services/scheduledAudits";
 import { reconcileStaleAudits } from "@/server/features/audit/services/auditReconciler";
 import { sendFirstAuditEmails } from "@/server/features/audit/services/firstAuditEmails";
 import { getOrCreateOrganizationCustomer } from "@/server/billing/subscription";
@@ -302,7 +303,16 @@ export default {
       return;
     }
 
-    // Watchdog first: reconcile audits stuck in "running" whose workflow died
+    // Recover durable scheduled launch intent before the generic watchdog.
+    let scheduledAuditError: unknown;
+    try {
+      await withPgClient(() => runScheduledAudits());
+    } catch (error) {
+      scheduledAuditError = error;
+      console.error("[cron] Scheduled-audit recovery failed:", error);
+    }
+
+    // Watchdog: reconcile audits stuck in "running" whose workflow died
     // without reaching mark-failed (OOM/CPU kills, expired instances). Runs
     // before the rank loop so a slow tick can't delay or starve it. Its
     // failure is held until after the rank checks so it can't suppress them,
@@ -330,5 +340,6 @@ export default {
     for (const result of checks)
       if (result.status === "rejected") throw result.reason;
     if (watchdogError) throw watchdogError;
+    if (scheduledAuditError) throw scheduledAuditError;
   },
 };

@@ -4,6 +4,7 @@ import {
   integer,
   real,
   index,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import { PAGE_FETCH_CLASSES } from "@/shared/audit-fetch-class";
@@ -23,12 +24,19 @@ export const audits = sqliteTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     startedByUserId: text("started_by_user_id").notNull(),
     startUrl: text("start_url").notNull(),
+    isScheduled: integer("is_scheduled", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    requestedStartUrl: text("requested_start_url"),
+    requestedConfig: text("requested_config"),
     status: text("status", {
       enum: ["running", "completed", "failed"],
     })
       .notNull()
       .default("running"),
     workflowInstanceId: text("workflow_instance_id"),
+    evidenceSealToken: text("evidence_seal_token"),
+    evidenceSealStartedAtMs: integer("evidence_seal_started_at_ms"),
     // JSON config: { maxPages, lighthouseStrategy }
     config: text("config").notNull().default("{}"),
     // Progress & summary
@@ -51,6 +59,7 @@ export const audits = sqliteTable(
     completedAt: text("completed_at"),
   },
   (table) => [
+    uniqueIndex("audits_project_id_id_uidx").on(table.projectId, table.id),
     index("audits_project_id_idx").on(table.projectId),
     index("audits_started_by_user_id_idx").on(table.startedByUserId),
   ],
@@ -113,6 +122,11 @@ export const auditPages = sqliteTable(
     fetchClass: text("fetch_class", { enum: PAGE_FETCH_CLASSES })
       .notNull()
       .default("ok"),
+    fetchedAtMs: integer("fetched_at_ms"),
+    contentAssessed: integer("content_assessed", { mode: "boolean" }),
+    isHtml: integer("is_html", { mode: "boolean" }),
+    isLikelyJsShell: integer("is_likely_js_shell", { mode: "boolean" }),
+    renderingMode: text("rendering_mode", { enum: ["plain", "rendered"] }),
     // Performance
     responseTimeMs: integer("response_time_ms"),
   },

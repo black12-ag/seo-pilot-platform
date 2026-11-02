@@ -10,6 +10,8 @@ import * as sqliteProjectContext from "./project-context.schema";
 import * as sqliteReports from "./reports.schema";
 import * as sqliteReportTemplates from "./report-templates.schema";
 import * as sqliteAudit from "./audit.schema";
+import * as sqliteAuditSchedule from "./audit-schedule.schema";
+import * as sqliteAuditEvidence from "./audit-evidence.schema";
 import * as sqliteSam from "./sam.schema";
 import * as sqliteAuth from "./better-auth-schema";
 import * as sqliteBilling from "./billing.schema";
@@ -24,6 +26,8 @@ import * as pgProjectContext from "./pg/project-context.schema";
 import * as pgReports from "./pg/reports.schema";
 import * as pgReportTemplates from "./pg/report-templates.schema";
 import * as pgAudit from "./pg/audit.schema";
+import * as pgAuditSchedule from "./pg/audit-schedule.schema";
+import * as pgAuditEvidence from "./pg/audit-evidence.schema";
 import * as pgSam from "./pg/sam.schema";
 import * as pgAuth from "./pg/better-auth-schema";
 import * as pgBilling from "./pg/billing.schema";
@@ -160,6 +164,8 @@ const sqliteAppTables = tablesFrom(
   sqliteReports,
   sqliteReportTemplates,
   sqliteAudit,
+  sqliteAuditSchedule,
+  sqliteAuditEvidence,
   sqliteSam,
   sqliteBilling,
   sqliteGa4,
@@ -175,6 +181,8 @@ const pgAppTables = tablesFrom(
   pgReports,
   pgReportTemplates,
   pgAudit,
+  pgAuditSchedule,
+  pgAuditEvidence,
   pgSam,
   pgBilling,
   pgGa4,

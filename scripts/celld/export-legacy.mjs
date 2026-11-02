@@ -92,6 +92,17 @@ try {
           `Finish or cancel active ${table} in the old installation before exporting`,
         );
     }
+  if (all.includes("audit_schedule_attempts")) {
+    const row = await db
+      .prepare(
+        "SELECT count(*) AS n FROM audit_schedule_attempts WHERE launch_state IN ('pending','launching','running') OR billing_state <> 'settled'",
+      )
+      .first();
+    if (row.n)
+      throw new Error(
+        "Finish recurring attempts and resolve uncertain usage before exporting",
+      );
+  }
   const excluded = new Set([
     "session",
     "verification",

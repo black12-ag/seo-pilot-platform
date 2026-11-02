@@ -147,10 +147,14 @@ export interface CrawledPageResult {
   /**
    * True when an HTML document was fetched and analyzed. Gates the content
    * checks in page reporters (an empty-shell HTML page must still be
-   * checked; a PDF must not). Transient — not persisted.
+   * checked; a PDF must not).
    */
   isHtml: boolean;
-  /** App shell, rendered or not; transient signal for the per-page issue reporter. */
+  /** Actual fetch time and assessment provenance; absent on old checkpoints. */
+  fetchedAtMs?: number;
+  contentAssessed?: boolean;
+  renderingMode?: "plain" | "rendered";
+  /** App shell, rendered or not. */
   javascriptShell?: boolean;
   /**
    * HTML size read for this page (approximate; capped at MAX_HTML_BYTES).

@@ -63,6 +63,9 @@ describe("crawlPage", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(page?.fetchClass).toBe("ok");
     expect(page?.title).toBe("A page");
+    expect(page?.fetchedAtMs).toBeTypeOf("number");
+    expect(page?.contentAssessed).toBe(true);
+    expect(page?.renderingMode).toBe("plain");
     // Recovered, but the crawl window should still slow down after it.
     expect(page?.rateLimited).toBe(true);
   });

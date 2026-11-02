@@ -4,6 +4,8 @@ import * as sqliteProjectContext from "./project-context.schema";
 import * as sqliteReports from "./reports.schema";
 import * as sqliteReportTemplates from "./report-templates.schema";
 import * as sqliteAudit from "./audit.schema";
+import * as sqliteAuditSchedule from "./audit-schedule.schema";
+import * as sqliteAuditEvidence from "./audit-evidence.schema";
 import * as sqliteSam from "./sam.schema";
 import * as sqliteAuth from "./better-auth-schema";
 import * as sqliteBilling from "./billing.schema";
@@ -18,6 +20,8 @@ import * as pgProjectContext from "./pg/project-context.schema";
 import * as pgReports from "./pg/reports.schema";
 import * as pgReportTemplates from "./pg/report-templates.schema";
 import * as pgAudit from "./pg/audit.schema";
+import * as pgAuditSchedule from "./pg/audit-schedule.schema";
+import * as pgAuditEvidence from "./pg/audit-evidence.schema";
 import * as pgSam from "./pg/sam.schema";
 import * as pgAuth from "./pg/better-auth-schema";
 import * as pgBilling from "./pg/billing.schema";
@@ -43,6 +47,8 @@ type AppSchema = typeof sqliteApp &
   typeof sqliteReports &
   typeof sqliteReportTemplates &
   typeof sqliteAudit &
+  typeof sqliteAuditSchedule &
+  typeof sqliteAuditEvidence &
   typeof sqliteSam &
   typeof sqliteAuth &
   typeof sqliteBilling &
@@ -61,6 +67,8 @@ const runtimeSchema =
         ...pgReports,
         ...pgReportTemplates,
         ...pgAudit,
+        ...pgAuditSchedule,
+        ...pgAuditEvidence,
         ...pgSam,
         ...pgAuth,
         ...pgBilling,
@@ -77,6 +85,8 @@ const runtimeSchema =
         ...sqliteReports,
         ...sqliteReportTemplates,
         ...sqliteAudit,
+        ...sqliteAuditSchedule,
+        ...sqliteAuditEvidence,
         ...sqliteSam,
         ...sqliteAuth,
         ...sqliteBilling,
@@ -117,6 +127,11 @@ export const {
   projectResearchLog,
   reports,
   reportTemplates,
+  auditSchedules,
+  auditScheduleAttempts,
+  auditScheduleDailyUsage,
+  auditEvents,
+  auditRunEvidence,
   audits,
   auditPages,
   auditIssues,

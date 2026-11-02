@@ -20,6 +20,12 @@ const {
 }));
 
 // The real module reaches cloudflare:workers through r2.ts at import time.
+vi.mock("@/server/features/audit/services/auditEvidenceManifest", () => ({
+  sealAuditEvidence: vi.fn(async () => true),
+}));
+vi.mock("cloudflare:workflows", () => ({
+  NonRetryableError: class extends Error {},
+}));
 vi.mock("cloudflare:workers", () => ({ env: {} }));
 // failedLighthouseFetch stays real — the failure-path test asserts on the
 // rows it builds.

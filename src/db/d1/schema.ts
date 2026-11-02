@@ -15,3 +15,6 @@ export * from "../telemetry.schema";
 export * from "../ai-visibility.schema";
 export * from "../local-seo.schema";
 export * from "../site-authority.schema";
+
+export * from "../audit-schedule.schema";
+export * from "../audit-evidence.schema";

@@ -25,6 +25,26 @@ function isSqlQuery(value: unknown): value is {
 
 type Executor = Parameters<Parameters<typeof runBatch>[0]>[0];
 
+// libsql defaults above Workerd/celld's five-term D1 compound SELECT budget.
+function assertD1CompoundSelectBudget(statement: string) {
+  const terms = [1];
+  const tokens =
+    statement.match(
+      /'(?:[^']|'')*'|"(?:[^"]|"")*"|--[^\n]*|\/\*[\s\S]*?\*\/|[();]|\b(?:union|intersect|except)\b/gi,
+    ) ?? [];
+  for (const token of tokens) {
+    if (token === "(") terms.push(1);
+    else if (token === ")") terms.pop();
+    else if (token === ";") terms.splice(0, terms.length, 1);
+    else if (/^(union|intersect|except)$/i.test(token)) {
+      const depth = terms.length - 1;
+      terms[depth] += 1;
+      if (terms[depth] > 5)
+        throw new Error("D1_ERROR: too many terms in compound SELECT");
+    }
+  }
+}
+
 /** Real migrations and atomic batches of production statements on both providers. */
 export async function createSiteAuthorityTestDb() {
   const pgUrl = process.env.SITE_AUTHORITY_TEST_PG_URL;
@@ -98,6 +118,7 @@ export async function createSiteAuthorityTestDb() {
         if (!isSqlQuery(statement))
           throw new Error("Expected real Drizzle query");
         const compiled = statement.toSQL();
+        if (provider === "d1") assertD1CompoundSelectBudget(compiled.sql);
         maxParameters = Math.max(maxParameters, compiled.params.length);
         if (compiled.params.length > 100)
           throw new Error("D1 parameter limit exceeded");

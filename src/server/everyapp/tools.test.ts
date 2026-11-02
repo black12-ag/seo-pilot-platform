@@ -91,7 +91,7 @@ describe("OpenSEO's tools on the Every App gateway", () => {
     expect(response.status).toBe(200);
     const catalog = await response.json<ToolsListResponseV1>();
     expect(catalog.warnings ?? []).toEqual([]);
-    expect(catalog.tools).toHaveLength(85);
+    expect(catalog.tools).toHaveLength(92);
     expect(
       catalog.tools
         .filter((tool) => tool.name.includes("site_authority"))
@@ -101,6 +101,29 @@ describe("OpenSEO's tools on the Every App gateway", () => {
       { name: "get_site_authority", risk: "read" },
       { name: "issue_site_authority_challenge", risk: "write" },
       { name: "revoke_site_authority", risk: "write" },
+    ]);
+    expect(
+      catalog.tools
+        .filter((tool) =>
+          [
+            "get_audit_schedule",
+            "estimate_audit_schedule",
+            "save_audit_schedule",
+            "list_audit_attempts",
+            "get_audit_evidence",
+            "compare_audit_evidence",
+            "export_audit_evidence",
+          ].includes(tool.name),
+        )
+        .map(({ name, risk }) => ({ name, risk })),
+    ).toEqual([
+      { name: "compare_audit_evidence", risk: "read" },
+      { name: "estimate_audit_schedule", risk: "read" },
+      { name: "export_audit_evidence", risk: "read" },
+      { name: "get_audit_evidence", risk: "read" },
+      { name: "get_audit_schedule", risk: "read" },
+      { name: "list_audit_attempts", risk: "read" },
+      { name: "save_audit_schedule", risk: "write" },
     ]);
     expect(catalog.instructions?.length).toBeLessThanOrEqual(1024);
     for (const tool of catalog.tools) {

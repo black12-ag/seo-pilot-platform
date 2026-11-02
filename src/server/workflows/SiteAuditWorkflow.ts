@@ -1,3 +1,5 @@
+import { assertAuditExecutionAllowed } from "@/server/features/audit/services/auditExecutionFence";
+import { sealAuditEvidence } from "@/server/features/audit/services/auditEvidenceManifest";
 /**
  * Cloudflare Workflow for site audit crawling.
  *
@@ -37,6 +39,7 @@ import { describeError } from "@/server/lib/errors";
 import { RENDERED_CRAWL_TIME_LIMIT_HOURS } from "@/shared/audit-limits";
 
 interface AuditParams {
+  scheduledAttemptId?: string;
   auditId: string;
   billingCustomer: BillingCustomerContext;
   projectId: string;
@@ -78,6 +81,16 @@ export class SiteAuditWorkflow extends WorkflowEntrypoint<Env, AuditParams> {
       // read here would re-execute on every replay and a transient failure
       // would kill the instance before the catch below exists.
       await pgStep(step, "validate-context", DB_STEP, async () => {
+        await assertAuditExecutionAllowed(
+          auditId,
+          event.payload.scheduledAttemptId,
+        );
+        if (
+          event.payload.scheduledAttemptId &&
+          (event.payload.config.renderJavaScript ||
+            event.payload.config.lighthouseStrategy !== "none")
+        )
+          throw new Error("Paid recurrence is unavailable");
         const audit = await AuditRepository.getAuditForWorkflow(
           auditId,
           event.instanceId,
@@ -98,18 +111,24 @@ export class SiteAuditWorkflow extends WorkflowEntrypoint<Env, AuditParams> {
         step,
         "resolve-start-url",
         START_URL_STEP,
-        () =>
-          resolveAuditStart({
+        async () => {
+          await assertAuditExecutionAllowed(
+            auditId,
+            event.payload.scheduledAttemptId,
+          );
+          return resolveAuditStart({
             auditId,
             organizationId: billingCustomer.organizationId,
             projectId,
             startUrl: event.payload.startUrl,
             config: event.payload.config,
             access: event.payload.access,
-          }),
+          });
+        },
       );
 
       await runAuditPhases(step, {
+        scheduledAttemptId: event.payload.scheduledAttemptId,
         auditId,
         workflowInstanceId: event.instanceId,
         billingCustomer,
@@ -138,10 +157,23 @@ export class SiteAuditWorkflow extends WorkflowEntrypoint<Env, AuditParams> {
         // A completed audit (e.g. cleanup failed after finalize) stays
         // completed, so it gets no failure telemetry either.
         if (runningAudit?.status !== "running") return;
-        await AuditRepository.failAudit(auditId, event.instanceId, {
+        const sealed = await sealAuditEvidence({
+          auditId,
+          projectId,
+          workflowInstanceId: event.instanceId,
+          status: "failed",
           ...errorInfo,
-          failedPhase: runningAudit?.currentPhase ?? null,
         });
+        if (!sealed) {
+          if (runningAudit.requestedConfig)
+            throw new Error("Failed audit evidence seal did not commit", {
+              cause: error,
+            });
+          await AuditRepository.failAudit(auditId, event.instanceId, {
+            ...errorInfo,
+            failedPhase: runningAudit.currentPhase,
+          });
+        }
 
         // Workflow entrypoints run outside the server-function middleware, so
         // nothing else forwards this throw to PostHog as a $exception. Captured

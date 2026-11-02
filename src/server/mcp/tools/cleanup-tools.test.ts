@@ -1,9 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { removeSavedKeywordsTool } from "./remove-saved-keywords";
 import { deleteReportTool } from "./report-tools";
 import { deleteReportTemplateTool } from "./report-template-tools";
 import { deleteSiteAuditTool } from "./site-audit-cleanup-tools";
 import { makeToolContext } from "./tool-test-support";
+
+const { testDb } = await vi.hoisted(async () => {
+  const { createSiteAuthorityTestDb } =
+    await import("../../features/site-authority/siteAuthorityTestDb");
+  return { testDb: await createSiteAuthorityTestDb() };
+});
+afterAll(testDb.close);
 
 const mocks = vi.hoisted(() => ({
   getProjectForOrganization: vi.fn(),
@@ -18,11 +25,16 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("cloudflare:workers", () => ({
+  DurableObject: vi.fn(),
   env: {
+    DATABASE_PROVIDER: testDb.provider,
     SITE_AUDIT_WORKFLOW: { get: async () => mocks },
     AUDIT_ENGINE: { destroyScratchpad: mocks.destroyScratchpad },
+    R2: { list: async () => ({ objects: [], truncated: false }) },
   },
 }));
+vi.mock("@/db", () => ({ db: testDb.db }));
+vi.mock("@/db/runBatch", () => ({ runBatch: testDb.runBatch }));
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
     getProjectForOrganization: mocks.getProjectForOrganization,

@@ -1,4 +1,15 @@
 import {
+  getAuditScheduleTool,
+  estimateAuditScheduleTool,
+  saveAuditScheduleTool,
+  listAuditAttemptsTool,
+} from "@/server/mcp/tools/audit-schedule-tools";
+import {
+  getAuditEvidenceTool,
+  compareAuditEvidenceTool,
+  exportAuditEvidenceTool,
+} from "@/server/mcp/tools/audit-evidence-tools";
+import {
   getAiVisibilityTrackerTool,
   generateAiVisibilityPromptsTool,
   researchAiVisibilityPromptsTool,
@@ -322,6 +333,13 @@ export function registerOpenSeoTools(
   register(getGoogleAnalyticsEcommercePerformanceTool);
   register(getGoogleAnalyticsSiteSearchTool);
   register(getGoogleAnalyticsAudienceBreakdownTool);
+  register(getAuditScheduleTool);
+  register(estimateAuditScheduleTool);
+  register(saveAuditScheduleTool);
+  register(listAuditAttemptsTool);
+  register(getAuditEvidenceTool);
+  register(compareAuditEvidenceTool);
+  register(exportAuditEvidenceTool);
   register(runSiteAuditTool);
   register(listSiteAuditsTool);
   register(deleteSiteAuditTool);
