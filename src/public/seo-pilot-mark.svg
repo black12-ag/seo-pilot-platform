@@ -1,0 +1,10 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="27" height="27" viewBox="0 0 27 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Text">
+<mask id="path-1-inside-1_0_4" fill="white">
+<path d="M0 7C0 3.13401 3.13401 0 7 0H20C23.866 0 27 3.13401 27 7V20C27 23.866 23.866 27 20 27H7C3.13401 27 0 23.866 0 20V7Z"/>
+</mask>
+<path d="M0 7C0 3.13401 3.13401 0 7 0H20C23.866 0 27 3.13401 27 7V20C27 23.866 23.866 27 20 27H7C3.13401 27 0 23.866 0 20V7Z" fill="white"/>
+<path d="M7 0V1H20V0V-1H7V0ZM27 7H26V20H27H28V7H27ZM20 27V26H7V27V28H20V27ZM0 20H1V7H0H-1V20H0ZM7 27V26C3.68629 26 1 23.3137 1 20H0H-1C-1 24.4183 2.58172 28 7 28V27ZM27 20H26C26 23.3137 23.3137 26 20 26V27V28C24.4183 28 28 24.4183 28 20H27ZM20 0V1C23.3137 1 26 3.68629 26 7H27H28C28 2.58172 24.4183 -1 20 -1V0ZM7 0V-1C2.58172 -1 -1 2.58172 -1 7H0H1C1 3.68629 3.68629 1 7 1V0Z" fill="#B5C4B8" mask="url(#path-1-inside-1_0_4)"/>
+<path id="SEO Pilot / original arrow mark" d="M4.5 22.5L22.5 4.5M22.5 21V4.5H6" stroke-width="1.2" stroke="#171A18"/>
+</g>
+</svg>
