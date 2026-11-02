@@ -1,5 +1,6 @@
 import { adaptMcpTool, type McpToolDefinition } from "./adaptMcpTool";
 import { waitingAuditStatusTool, recurringAuditTools } from "./samAuditTools";
+import { contentTools } from "./samContentTools";
 import {
   getAiVisibilityTrackerTool,
   generateAiVisibilityPromptsTool,
@@ -305,6 +306,7 @@ export function buildSamMcpTools(
       getGoogleAnalyticsAudienceBreakdownTool,
     ),
     ...recurringAuditTools(toolContext, projectId),
+    ...contentTools(toolContext, projectId),
     run_site_audit: adaptTool(runSiteAuditTool),
     get_audit_status: waitingAuditStatusTool(adaptTool),
     get_audit_issues: adaptTool(getAuditIssuesTool),

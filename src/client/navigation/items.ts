@@ -5,6 +5,7 @@ import {
   ChartLine,
   ClipboardCheck,
   FileText,
+  FilePenLine,
   Globe,
   LayoutDashboard,
   Link2,
@@ -80,6 +81,11 @@ const projectNavItems = [
     to: "/p/$projectId/prompt-explorer" as const,
     label: "Prompt Explorer",
     icon: MessageSquare,
+  },
+  {
+    to: "/p/$projectId/content" as const,
+    label: "Content",
+    icon: FilePenLine,
   },
   {
     to: "/p/$projectId/reports" as const,
@@ -159,6 +165,7 @@ export function getProjectNavGroups(projectId: string) {
     {
       label: "AI Tools",
       items: [
+        byPath("/p/$projectId/content"),
         byPath("/p/$projectId/reports"),
         byPath("/p/$projectId/context"),
         aiNavItem,

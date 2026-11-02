@@ -8,6 +8,7 @@ import {
 } from "@/server/features/site-authority/repositories/siteAuthorityProjectWrites";
 import { projects } from "@/db/schema";
 import { AppError } from "@/server/lib/errors";
+import { bumpContentContext } from "@/server/features/content/repositories/contentProjectWrites";
 
 async function listProjects(organizationId: string) {
   return db.query.projects.findMany({
@@ -131,6 +132,11 @@ async function writeProjectWebsite(
 ) {
   await runBatch((tx) => [
     lockProject(tx, projectId, organizationId),
+    bumpContentContext(
+      tx,
+      projectId,
+      sql`p.organization_id = ${organizationId} and p.archived_at is null`,
+    ),
     ...invalidateSiteAuthority(tx, projectId, organizationId, {
       reason: "website_changed",
       nowMs: Date.now(),
@@ -219,6 +225,11 @@ async function listArchivedProjects(organizationId: string) {
 async function restoreProject(projectId: string, organizationId: string) {
   await runBatch((tx) => [
     lockProject(tx, projectId, organizationId),
+    bumpContentContext(
+      tx,
+      projectId,
+      sql`p.organization_id = ${organizationId} and p.archived_at is not null`,
+    ),
     ...invalidateSiteAuthority(tx, projectId, organizationId, {
       reason: "project_archived",
       nowMs: Date.now(),
@@ -247,6 +258,11 @@ async function restoreProject(projectId: string, organizationId: string) {
 async function archiveProject(projectId: string, organizationId: string) {
   await runBatch((tx) => [
     lockProject(tx, projectId, organizationId),
+    bumpContentContext(
+      tx,
+      projectId,
+      sql`p.organization_id = ${organizationId} and p.archived_at is null`,
+    ),
     ...invalidateSiteAuthority(tx, projectId, organizationId, {
       reason: "project_archived",
       nowMs: Date.now(),

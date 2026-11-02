@@ -64,6 +64,10 @@ allowances and evidence. Keep the policy unset until the installation and
 schedules have been reviewed. Paid recurring rendering/Lighthouse and the
 remaining complete-platform modules are still in development.
 
+The development branch's [manual content studio guide](../web/content/docs/self-hosting/content-studio.md)
+describes briefs, attributed sources, Markdown revisions, human review and
+exports. Public URL capture, paid generation and publishing remain unavailable.
+
 ## Stop and restart
 
 ```sh

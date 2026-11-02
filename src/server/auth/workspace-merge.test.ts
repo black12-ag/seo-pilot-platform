@@ -88,6 +88,16 @@ describe("WorkspaceMergeService", () => {
       }),
     ]);
 
+    expect(
+      await rows(
+        "SELECT project_id, context_version FROM content_project_state ORDER BY project_id",
+      ),
+    ).toEqual([
+      expect.objectContaining({ project_id: "p1-acme", context_version: 1 }),
+      expect.objectContaining({ project_id: "p1-default", context_version: 1 }),
+      expect.objectContaining({ project_id: "p2-default", context_version: 1 }),
+    ]);
+
     // Legacy orgs are gone; their activation rows cascaded away after the
     // earliest milestones were folded into the shared row.
     expect(await rows("SELECT id FROM organization ORDER BY id")).toEqual([

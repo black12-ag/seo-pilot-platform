@@ -42,6 +42,10 @@ const runBatch = vi.hoisted(() =>
 );
 
 vi.mock("@/db/runBatch", () => ({ runBatch }));
+vi.mock("@/server/features/content/repositories/contentProjectWrites", () => ({
+  lockContentProject: () => Promise.resolve(),
+  bumpContentContext: () => Promise.resolve(),
+}));
 
 const section = (
   key: string,

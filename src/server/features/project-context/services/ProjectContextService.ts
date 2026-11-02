@@ -1,4 +1,8 @@
 import { runBatch } from "@/db/runBatch";
+import {
+  bumpContentContext,
+  lockContentProject,
+} from "@/server/features/content/repositories/contentProjectWrites";
 import { ProjectContextRepository } from "@/server/features/project-context/repositories/ProjectContextRepository";
 import { resolveContextUpdates } from "@/server/features/project-context/services/contextUpdateOps";
 import { ReportTemplateRepository } from "@/server/features/reports/repositories/ReportTemplateRepository";
@@ -155,8 +159,14 @@ export async function applyContextUpdates(
 
   // One atomic batch (D1 batch / PG transaction): a mid-batch failure rolls
   // everything back, which is what lets callers retry a whole batch safely.
-  await runBatch((tx) =>
-    resolved.flatMap((op): Promise<unknown>[] => {
+  await runBatch((tx) => [
+    ...(resolved.some(
+      (op) =>
+        op.kind !== "appendResearchLog" && op.kind !== "deleteResearchLog",
+    )
+      ? [lockContentProject(tx, projectId), bumpContentContext(tx, projectId)]
+      : []),
+    ...resolved.flatMap((op): Promise<unknown>[] => {
       switch (op.kind) {
         case "upsertSection":
           return [
@@ -222,7 +232,7 @@ export async function applyContextUpdates(
           ];
       }
     }),
-  );
+  ]);
 
   return getProjectContext(projectId);
 }

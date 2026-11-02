@@ -2,6 +2,7 @@ import { invalidateAuditSchedule } from "@/server/features/audit/repositories/au
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { chunk } from "remeda";
 import { runBatch } from "@/db/runBatch";
+import { bumpContentContext } from "@/server/features/content/repositories/contentProjectWrites";
 import {
   lockProject,
   invalidateSiteAuthority,
@@ -35,6 +36,11 @@ export async function saveWebsiteSetup(
   const insertedIds = sql.raw(competitors.map(({ id }) => `'${id}'`).join(","));
   await runBatch((tx) => [
     lockProject(tx, input.projectId, organizationId),
+    bumpContentContext(
+      tx,
+      input.projectId,
+      sql`p.organization_id = ${organizationId} and p.archived_at is null`,
+    ),
     ...invalidateSiteAuthority(tx, input.projectId, organizationId, {
       reason: "website_changed",
       nowMs: Date.now(),

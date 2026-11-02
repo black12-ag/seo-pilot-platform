@@ -130,7 +130,10 @@ export const auditPages = pgTable(
     // Performance
     responseTimeMs: integer("response_time_ms"),
   },
-  (table) => [index("audit_pages_audit_url_idx").on(table.auditId, table.url)],
+  (table) => [
+    uniqueIndex("audit_pages_audit_id_id_uidx").on(table.auditId, table.id),
+    index("audit_pages_audit_url_idx").on(table.auditId, table.url),
+  ],
 );
 
 // Link edges live in the per-audit AuditScratchpad Durable Object for the
@@ -156,6 +159,7 @@ export const auditIssues = pgTable(
     detailsJson: text("details_json"),
   },
   (table) => [
+    uniqueIndex("audit_issues_audit_id_id_uidx").on(table.auditId, table.id),
     index("audit_issues_audit_type_idx").on(table.auditId, table.issueType),
     index("audit_issues_page_id_idx").on(table.pageId),
   ],

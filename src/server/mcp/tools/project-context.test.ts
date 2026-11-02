@@ -31,6 +31,10 @@ vi.mock("@/db/runBatch", () => ({
     for (const statement of build({})) await statement;
   },
 }));
+vi.mock("@/server/features/content/repositories/contentProjectWrites", () => ({
+  lockContentProject: () => Promise.resolve(),
+  bumpContentContext: () => Promise.resolve(),
+}));
 
 vi.mock(
   "@/server/features/project-context/repositories/ProjectContextRepository",

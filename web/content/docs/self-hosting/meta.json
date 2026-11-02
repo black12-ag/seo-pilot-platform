@@ -3,6 +3,7 @@
   "pages": [
     "[Overview](/docs/self-hosting)",
     "[Docker](/docs/self-hosting/docker)",
-    "[Cloudflare](/docs/self-hosting/cloudflare)"
+    "[Cloudflare](/docs/self-hosting/cloudflare)",
+    "[Content studio](/docs/self-hosting/content-studio)"
   ]
 }

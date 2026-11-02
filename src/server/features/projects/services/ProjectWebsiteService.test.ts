@@ -96,6 +96,9 @@ describe("ProjectWebsiteService.save", () => {
       (await testDb.execute("SELECT content FROM project_context_sections"))[0]
         ?.content,
     ).toBe(accepted.overview);
+    expect(
+      await testDb.execute("SELECT context_version FROM content_project_state"),
+    ).toMatchObject([{ context_version: 1 }]);
   });
 
   it.each(["before review", "during save"])(

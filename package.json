@@ -54,6 +54,7 @@
     "test:e2e:free-tools": "playwright test -c tests/playwright.free-tools.config.ts",
     "test:e2e:mcp-isolation": "playwright test -c tests/playwright.mcp-isolation.config.ts",
     "test:e2e:recurring-audit": "playwright test -c tests/playwright.recurring-audit.config.ts",
+    "test:e2e:content-review": "playwright test -c tests/playwright.content-review.config.ts",
     "test:e2e:site-authority": "playwright test -c tests/playwright.site-authority.config.ts",
     "test:e2e:domain": "playwright test -c tests/playwright.config.ts tests/domain-overview-filters.spec.ts",
     "test:e2e:domain:perf": "playwright test -c tests/playwright.config.ts tests/domain-overview-filters.perf.spec.ts",

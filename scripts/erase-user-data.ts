@@ -14,31 +14,18 @@
  */
 import process from "node:process";
 import { Autumn } from "autumn-js";
-import {
-  and,
-  count,
-  eq,
-  gt,
-  inArray,
-  isNotNull,
-  ne,
-  notExists,
-  or,
-  sql,
-} from "drizzle-orm";
-import { alias, type PgColumn, type PgTable } from "drizzle-orm/pg-core";
+import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { z } from "zod";
-import { GA4_OAUTH_PROVIDER_ID } from "../src/shared/ga4";
 import {
   GDPR_STORAGE_ERASURE_PATH,
   signGdprErasureRequest,
   type GdprStorageErasurePayload,
 } from "../src/shared/gdpr-erasure";
-import { GSC_OAUTH_PROVIDER_ID } from "../src/shared/gsc";
-import { LocalScanStatus } from "../src/shared/local-seo";
 import { loadLocalEnv, parseArgs } from "./cli-utils";
+import { buildInventory, type Db, type UserRow } from "./erasure/inventory";
+import { erasePostgres, verifyPostgres } from "./erasure/postgres";
 // The Node-safe raw barrel (not ../src/db/schema, the provider-aware one,
 // which imports cloudflare:workers).
 import * as schema from "../src/db/pg/schema";
@@ -49,9 +36,6 @@ const args = parseArgs(process.argv.slice(2));
 const execute = args.execute === "true";
 const emailSelector = args.email?.trim().toLowerCase();
 const userIdSelector = args["user-id"]?.trim();
-
-type Db = ReturnType<typeof drizzle>;
-type UserRow = { id: string; email: string; name: string };
 
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -96,279 +80,6 @@ async function findUser(db: Db): Promise<UserRow> {
   if (rows.length === 0) throw new Error("No matching user found.");
   if (rows.length !== 1) throw new Error("Selector matched multiple users.");
   return rows[0];
-}
-
-async function buildInventory(db: Db, user: UserRow) {
-  const allMembers = alias(schema.member, "all_members");
-  const organizations = await db
-    .select({
-      id: schema.organization.id,
-      name: schema.organization.name,
-      memberCount: count(allMembers.id),
-    })
-    .from(schema.member)
-    .innerJoin(
-      schema.organization,
-      eq(schema.organization.id, schema.member.organizationId),
-    )
-    .innerJoin(
-      allMembers,
-      eq(allMembers.organizationId, schema.organization.id),
-    )
-    .where(eq(schema.member.userId, user.id))
-    .groupBy(schema.organization.id, schema.organization.name)
-    .orderBy(schema.organization.id);
-  const shared = organizations.filter(
-    (organization) => organization.memberCount !== 1,
-  );
-  if (shared.length > 0) {
-    throw new Error(
-      `Refusing to erase shared organization(s): ${shared
-        .map(
-          (organization) =>
-            `${organization.id} (${organization.memberCount} members)`,
-        )
-        .join(
-          ", ",
-        )}. Transfer/remove the user and handle shared records explicitly first.`,
-    );
-  }
-  const organizationIds = organizations.map((organization) => organization.id);
-
-  // drizzle's inArray throws on empty arrays, so project-scoped queries are
-  // skipped outright when the user has no organizations or projects.
-  const projects =
-    organizationIds.length === 0
-      ? []
-      : await db
-          .select({ id: schema.projects.id })
-          .from(schema.projects)
-          .where(inArray(schema.projects.organizationId, organizationIds))
-          .orderBy(schema.projects.id);
-  const projectIds = projects.map((row) => row.id);
-
-  const samSessions = await db
-    .select({ id: schema.samSessions.id })
-    .from(schema.samSessions)
-    .where(eq(schema.samSessions.userId, user.id))
-    .orderBy(schema.samSessions.id);
-
-  // Scratchpad DOs self-destroy at finalize and via a 7-day alarm, and the
-  // audit-progress KV key has a 30-minute TTL, so older audits have no
-  // Cloudflare state left to erase. 30 days gives 4x margin over the alarm
-  // and keeps the Worker call within KV's per-invocation operation limit.
-  // startedAt is a text column of ISO strings, so compare lexicographically.
-  const auditCutoff = new Date(
-    Date.now() - 30 * 24 * 60 * 60 * 1000,
-  ).toISOString();
-  const audits =
-    projectIds.length === 0
-      ? []
-      : await db
-          .select({ id: schema.audits.id })
-          .from(schema.audits)
-          .where(
-            and(
-              inArray(schema.audits.projectId, projectIds),
-              or(
-                gt(schema.audits.startedAt, auditCutoff),
-                eq(schema.audits.status, "running"),
-              ),
-            ),
-          )
-          .orderBy(schema.audits.id);
-
-  const r2Rows =
-    projectIds.length === 0
-      ? []
-      : await db
-          .selectDistinct({ r2Key: schema.auditLighthouseResults.r2Key })
-          .from(schema.auditLighthouseResults)
-          .innerJoin(
-            schema.audits,
-            eq(schema.audits.id, schema.auditLighthouseResults.auditId),
-          )
-          .where(
-            and(
-              inArray(schema.audits.projectId, projectIds),
-              isNotNull(schema.auditLighthouseResults.r2Key),
-            ),
-          )
-          .orderBy(schema.auditLighthouseResults.r2Key);
-  const r2Keys = r2Rows.flatMap((row) => (row.r2Key ? [row.r2Key] : []));
-
-  const googleAccountRows = await db
-    .selectDistinct({
-      providerId: schema.account.providerId,
-      accountId: schema.account.accountId,
-    })
-    .from(schema.account)
-    .where(
-      and(
-        eq(schema.account.userId, user.id),
-        inArray(schema.account.providerId, [
-          GSC_OAUTH_PROVIDER_ID,
-          GA4_OAUTH_PROVIDER_ID,
-        ]),
-      ),
-    )
-    .orderBy(schema.account.providerId, schema.account.accountId);
-  // The where clause already restricts providerId to the two Google
-  // providers; the predicate narrows the column's string type to match the
-  // erasure payload's enum.
-  const isGoogleProviderId = (
-    value: string,
-  ): value is typeof GSC_OAUTH_PROVIDER_ID | typeof GA4_OAUTH_PROVIDER_ID =>
-    value === GSC_OAUTH_PROVIDER_ID || value === GA4_OAUTH_PROVIDER_ID;
-  const googleAccounts = googleAccountRows.flatMap((row) =>
-    isGoogleProviderId(row.providerId)
-      ? [{ providerId: row.providerId, accountId: row.accountId }]
-      : [],
-  );
-
-  const activeAuditWorkflows =
-    projectIds.length === 0
-      ? []
-      : await db
-          .select({
-            id: sql<string>`coalesce(${schema.audits.workflowInstanceId}, ${schema.audits.id})`,
-          })
-          .from(schema.audits)
-          .where(
-            and(
-              inArray(schema.audits.projectId, projectIds),
-              eq(schema.audits.status, "running"),
-            ),
-          )
-          .orderBy(schema.audits.id);
-  const activeRankWorkflows =
-    projectIds.length === 0
-      ? []
-      : await db
-          .select({ id: schema.rankCheckRuns.id })
-          .from(schema.rankCheckRuns)
-          .where(
-            and(
-              inArray(schema.rankCheckRuns.projectId, projectIds),
-              inArray(schema.rankCheckRuns.status, ["pending", "running"]),
-            ),
-          )
-          .orderBy(schema.rankCheckRuns.id);
-
-  const activeAiVisibilityWorkflows =
-    projectIds.length === 0
-      ? []
-      : await db
-          .select({ id: schema.aiRuns.id })
-          .from(schema.aiRuns)
-          .where(
-            and(
-              inArray(schema.aiRuns.projectId, projectIds),
-              inArray(schema.aiRuns.status, ["queued", "running"]),
-            ),
-          )
-          .orderBy(schema.aiRuns.id);
-
-  const activeLocalRankWorkflows =
-    projectIds.length === 0
-      ? []
-      : await db
-          .select({ id: schema.localRankChecks.id })
-          .from(schema.localRankChecks)
-          .where(
-            and(
-              inArray(schema.localRankChecks.projectId, projectIds),
-              inArray(schema.localRankChecks.status, [
-                LocalScanStatus.Queued,
-                LocalScanStatus.Running,
-              ]),
-            ),
-          )
-          .orderBy(schema.localRankChecks.id);
-  // Any table with a `project_id`: the counts differ only in which table.
-  const projectCount = async (table: PgTable & { projectId: PgColumn }) =>
-    projectIds.length === 0
-      ? 0
-      : db.$count(table, inArray(table.projectId, projectIds));
-  const databaseCounts = {
-    sessions: await db.$count(
-      schema.session,
-      eq(schema.session.userId, user.id),
-    ),
-    accounts: await db.$count(
-      schema.account,
-      eq(schema.account.userId, user.id),
-    ),
-    onboarding_answers: await db.$count(
-      schema.userOnboardingAnswers,
-      eq(schema.userOnboardingAnswers.userId, user.id),
-    ),
-    projects: projectIds.length,
-    saved_keywords: await projectCount(schema.savedKeywords),
-    audits: await projectCount(schema.audits),
-    rank_snapshots:
-      projectIds.length === 0
-        ? 0
-        : await db
-            .select({ value: count() })
-            .from(schema.rankSnapshots)
-            .innerJoin(
-              schema.rankCheckRuns,
-              eq(schema.rankCheckRuns.id, schema.rankSnapshots.runId),
-            )
-            .where(inArray(schema.rankCheckRuns.projectId, projectIds))
-            .then((rows) => rows[0]?.value ?? 0),
-    sam_sessions: samSessions.length,
-    attributed_audits: await db.$count(
-      schema.audits,
-      eq(schema.audits.startedByUserId, user.id),
-    ),
-    reports: await projectCount(schema.reports),
-    attributed_reports: await db.$count(
-      schema.reports,
-      eq(schema.reports.createdByUserId, user.id),
-    ),
-    report_templates: await projectCount(schema.reportTemplates),
-    attributed_report_templates: await db.$count(
-      schema.reportTemplates,
-      eq(schema.reportTemplates.createdByUserId, user.id),
-    ),
-    shared_reports: await db.$count(
-      schema.reports,
-      and(
-        eq(schema.reports.createdByUserId, user.id),
-        isNotNull(schema.reports.shareToken),
-      ),
-    ),
-    gsc_connections: await db.$count(
-      schema.gscConnections,
-      eq(schema.gscConnections.connectedByUserId, user.id),
-    ),
-    ga4_connections: await db.$count(
-      schema.ga4Connections,
-      eq(schema.ga4Connections.connectedByUserId, user.id),
-    ),
-    api_keys: await db.$count(
-      schema.apikey,
-      eq(schema.apikey.referenceId, user.id),
-    ),
-  };
-
-  return {
-    organizations,
-    aiVisibilityProjectIds: projectIds,
-    activeAiVisibilityWorkflowIds: activeAiVisibilityWorkflows.map(
-      (row) => row.id,
-    ),
-    samSessionIds: samSessions.map((row) => row.id),
-    auditIds: audits.map((row) => row.id),
-    r2Keys,
-    googleAccounts,
-    activeAuditWorkflowIds: activeAuditWorkflows.map((row) => row.id),
-    activeRankWorkflowIds: activeRankWorkflows.map((row) => row.id),
-    activeLocalRankWorkflowIds: activeLocalRankWorkflows.map((row) => row.id),
-    databaseCounts,
-  };
 }
 
 async function deleteLoopsContactBy(selector: {
@@ -512,118 +223,6 @@ async function eraseWorkerStorage(payload: GdprStorageErasurePayload) {
     .parse(JSON.parse(responseBody) as unknown).result;
 }
 
-async function erasePostgres(db: Db, user: UserRow, organizationIds: string[]) {
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(schema.invitation)
-      .where(sql`lower(${schema.invitation.email}) = lower(${user.email})`);
-    // Better Auth stores verification rows keyed by composite identifiers
-    // (reset-password:<token>, delete-account-<token>) whose value is the
-    // user id; emails never appear bare in either column.
-    await tx
-      .delete(schema.verification)
-      .where(
-        or(
-          eq(schema.verification.identifier, user.id),
-          eq(schema.verification.value, user.id),
-        ),
-      );
-    // These columns intentionally have no user FK. Remove connection records
-    // and anonymize retained audit attribution even if the user left that
-    // workspace before making this request.
-    await tx
-      .delete(schema.gscConnections)
-      .where(eq(schema.gscConnections.connectedByUserId, user.id));
-    await tx
-      .delete(schema.ga4Connections)
-      .where(eq(schema.ga4Connections.connectedByUserId, user.id));
-    // apikey.reference_id mirrors the plugin's polymorphic schema and has no
-    // user FK, so keys don't cascade with the user row.
-    await tx
-      .delete(schema.apikey)
-      .where(eq(schema.apikey.referenceId, user.id));
-    await tx
-      .update(schema.audits)
-      .set({ startedByUserId: "gdpr-deleted-user" })
-      .where(eq(schema.audits.startedByUserId, user.id));
-    // reports.created_by_user_id has no FK either (same reason as audits), so a
-    // surviving multi-member org keeps its reports with the attribution wiped.
-    // Any public link on a report they created is revoked in the same
-    // statement: the link is a capability published from their work, and it
-    // must not outlive them.
-    await tx
-      .update(schema.reports)
-      .set({
-        createdByUserId: "gdpr-deleted-user",
-        shareToken: null,
-        sharedAt: null,
-      })
-      .where(eq(schema.reports.createdByUserId, user.id));
-    await tx
-      .update(schema.reportTemplates)
-      .set({ createdByUserId: "gdpr-deleted-user" })
-      .where(eq(schema.reportTemplates.createdByUserId, user.id));
-    if (organizationIds.length > 0) {
-      // Re-assert the solo-membership guard at delete time: anyone who
-      // accepted an invite after the inventory was taken must abort the
-      // transaction, not be cascaded away with the organization.
-      const deletedOrganizations = await tx
-        .delete(schema.organization)
-        .where(
-          and(
-            inArray(schema.organization.id, organizationIds),
-            notExists(
-              tx
-                .select({ one: sql`1` })
-                .from(schema.member)
-                .where(
-                  and(
-                    eq(schema.member.organizationId, schema.organization.id),
-                    ne(schema.member.userId, user.id),
-                  ),
-                ),
-            ),
-          ),
-        )
-        .returning({ id: schema.organization.id });
-      if (deletedOrganizations.length !== organizationIds.length) {
-        throw new Error(
-          "Organization(s) gained other members since the inventory was taken; aborting the Postgres delete. Re-run after resolving membership.",
-        );
-      }
-    }
-    const deleted = await tx
-      .delete(schema.user)
-      .where(eq(schema.user.id, user.id))
-      .returning({ id: schema.user.id });
-    if (deleted.length !== 1) {
-      throw new Error("Postgres user row disappeared before the final delete.");
-    }
-  });
-}
-
-/** Independent post-commit read-back for the erasure receipt. */
-async function verifyPostgres(
-  db: Db,
-  userId: string,
-  organizationIds: string[],
-) {
-  const userRows = await db.$count(schema.user, eq(schema.user.id, userId));
-  const organizationRows =
-    organizationIds.length === 0
-      ? 0
-      : await db.$count(
-          schema.organization,
-          inArray(schema.organization.id, organizationIds),
-        );
-  if (userRows !== 0 || organizationRows !== 0) {
-    throw new Error(
-      "Postgres verification failed: user or organization rows remain.",
-    );
-  }
-  return { userRows, organizationRows };
-}
-
 async function main() {
   const connectionString = requiredEnv("POSTGRES_DATABASE_URL");
   const databaseUrl = new URL(connectionString);
@@ -698,11 +297,12 @@ async function main() {
       r2Keys: inventory.r2Keys,
       googleAccounts: inventory.googleAccounts,
     });
-    await erasePostgres(db, user, organizationIds);
+    const contentErasure = await erasePostgres(db, user, organizationIds);
     const postgresVerification = await verifyPostgres(
       db,
       user.id,
       organizationIds,
+      contentErasure,
     );
 
     console.log(

@@ -4,6 +4,7 @@ import { and, asc, eq, inArray, isNull, like, sql } from "drizzle-orm";
 import { chunk, firstBy, identity, sort } from "remeda";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
+import { bumpContentContext } from "@/server/features/content/repositories/contentProjectWrites";
 import {
   lockProject,
   lockAuthorityOrganization,
@@ -152,6 +153,13 @@ async function mergeLegacyWorkspaces() {
     ),
     ...transferredProjects.map((project) =>
       lockProject(tx, project.id, project.organizationId),
+    ),
+    ...transferredProjects.map((project) =>
+      bumpContentContext(
+        tx,
+        project.id,
+        sql`p.organization_id = ${project.organizationId}`,
+      ),
     ),
     ...transferredProjects.flatMap((project) =>
       invalidateSiteAuthority(tx, project.id, project.organizationId, {

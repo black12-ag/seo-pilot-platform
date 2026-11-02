@@ -10,6 +10,10 @@ data, or sensitive paths.
 
 ## Open
 
+- [ ] `2026-11-02T17:35:43Z` — `codex` — A peer-addressed Orca escalation was rejected because escalations go to the coordinator; the worker resent peer status and separately escalated to the coordinator. Document this routing distinction in the repository orchestration guidance to avoid the retry.
+
+- [ ] `2026-11-02T16:51:29Z` — `codex` — Vitest includes `src/**/*.test.ts` but not `.test.tsx`, so a component test named with the usual TSX suffix reports “No test files found”. Document the supported suffix or include TSX tests in the configuration.
+
 - [ ] `2026-10-19T19:28:32Z` — `codex` — `pnpm cf-typegen` regenerates thousands of unrelated runtime types and changes `Env` inheritance, breaking existing Workflow fixtures and ambient bindings. Split binding generation from runtime updates so a new binding can be generated without an unrelated type migration; meanwhile declare new bindings in `src/env.d.ts`.
 
 - [ ] `2026-10-06T04:32:17Z` — `claude` — `npm --prefix web run types:check` (the web-content skill's final check) fails on a fresh worktree with only `web/` deps installed: `web/tsconfig.json` includes `**/*.ts`, so it type-checks `web/tests/free-tool-verification.spec.ts`, which imports the root-only `@playwright/test` and reports TS2307 plus a dozen implicit-any errors unrelated to the change. Add `@playwright/test` to `web` devDependencies or exclude that spec from `web/tsconfig.json`.

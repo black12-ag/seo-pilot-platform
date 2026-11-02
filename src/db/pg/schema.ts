@@ -15,3 +15,5 @@ export * from "./site-authority.schema";
 
 export * from "./audit-schedule.schema";
 export * from "./audit-evidence.schema";
+export * from "./content.schema";
+export * from "./content-evidence.schema";

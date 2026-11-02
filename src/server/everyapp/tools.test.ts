@@ -91,7 +91,34 @@ describe("OpenSEO's tools on the Every App gateway", () => {
     expect(response.status).toBe(200);
     const catalog = await response.json<ToolsListResponseV1>();
     expect(catalog.warnings ?? []).toEqual([]);
-    expect(catalog.tools).toHaveLength(92);
+    expect(catalog.tools).toHaveLength(101);
+    expect(
+      catalog.tools
+        .filter((tool) =>
+          [
+            "list_content",
+            "get_content_revision",
+            "create_content_brief",
+            "capture_content_source",
+            "save_content_revision",
+            "archive_content",
+            "export_content_revision",
+            "request_content_review",
+            "get_content_review",
+          ].includes(tool.name),
+        )
+        .map(({ name, risk }) => ({ name, risk })),
+    ).toEqual([
+      { name: "archive_content", risk: "write" },
+      { name: "capture_content_source", risk: "write" },
+      { name: "create_content_brief", risk: "write" },
+      { name: "export_content_revision", risk: "read" },
+      { name: "get_content_review", risk: "read" },
+      { name: "get_content_revision", risk: "read" },
+      { name: "list_content", risk: "read" },
+      { name: "request_content_review", risk: "write" },
+      { name: "save_content_revision", risk: "write" },
+    ]);
     expect(
       catalog.tools
         .filter((tool) => tool.name.includes("site_authority"))
