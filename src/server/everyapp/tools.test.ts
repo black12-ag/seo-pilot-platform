@@ -91,7 +91,17 @@ describe("OpenSEO's tools on the Every App gateway", () => {
     expect(response.status).toBe(200);
     const catalog = await response.json<ToolsListResponseV1>();
     expect(catalog.warnings ?? []).toEqual([]);
-    expect(catalog.tools).toHaveLength(81);
+    expect(catalog.tools).toHaveLength(85);
+    expect(
+      catalog.tools
+        .filter((tool) => tool.name.includes("site_authority"))
+        .map(({ name, risk }) => ({ name, risk })),
+    ).toEqual([
+      { name: "check_site_authority_challenge", risk: "write" },
+      { name: "get_site_authority", risk: "read" },
+      { name: "issue_site_authority_challenge", risk: "write" },
+      { name: "revoke_site_authority", risk: "write" },
+    ]);
     expect(catalog.instructions?.length).toBeLessThanOrEqual(1024);
     for (const tool of catalog.tools) {
       expect(tool.description.length, tool.name).toBeLessThanOrEqual(2048);

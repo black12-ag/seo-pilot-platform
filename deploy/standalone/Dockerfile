@@ -16,8 +16,12 @@ RUN pnpm build:standalone
 FROM node:22-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9 AS runtime
 ARG TARGETARCH
 ARG CELLD_VERSION=0.5.1
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && \
-    rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules /opt/yarn* && \
+# The slim base lacks OS certificates; use pinned Node's trusted roots to bootstrap HTTPS apt.
+RUN node -e "require('fs').writeFileSync('/tmp/apt-ca.pem', require('tls').rootCertificates.join('\n'))" && \
+    sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get -o Acquire::https::CaInfo=/tmp/apt-ca.pem -o Acquire::https::Timeout=30 -o Acquire::Retries=2 update && \
+    apt-get -o Acquire::https::CaInfo=/tmp/apt-ca.pem -o Acquire::https::Timeout=30 -o Acquire::Retries=2 install -y --no-install-recommends ca-certificates curl && \
+    rm -rf /tmp/apt-ca.pem /var/lib/apt/lists/* /usr/local/lib/node_modules /opt/yarn* && \
     rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 RUN case "$TARGETARCH" in \
       arm64) triple=aarch64-unknown-linux-gnu; checksum=375c7cd9446d61e6ee2c263d6be792650153ffd7cd562b2c4b6b644776b4494e;; \

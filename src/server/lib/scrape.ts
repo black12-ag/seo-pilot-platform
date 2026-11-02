@@ -5,6 +5,9 @@
 // gracefully (less text); a Browser Rendering upgrade can slot in behind this
 // same interface later.
 
+import { readBoundedText } from "@/server/lib/read-bounded-text";
+export { readBoundedText } from "@/server/lib/read-bounded-text";
+
 import { publicFetch } from "@/server/lib/public-fetch";
 import { normalizeAndValidateStartUrl } from "@/server/lib/audit/url-policy";
 import { RenderedPageService } from "@/server/lib/audit/rendered-page";
@@ -16,7 +19,6 @@ const PER_PAGE_CHAR_LIMIT = 4000;
 const FETCH_TIMEOUT_MS = 10_000;
 // Covers chains like https://apex -> http://www -> https://www.
 const MAX_REDIRECTS = 3;
-const MAX_RESPONSE_BYTES = 2_000_000;
 const USER_AGENT = "OpenSEO-Onboarding/1.0 (+https://openseo.so)";
 
 type ScrapedPage = {
@@ -30,30 +32,6 @@ type SiteReadResult = {
   /** True when we couldn't read any page (blocked, offline, etc.). */
   blocked: boolean;
 };
-
-// Bounded read: accumulate up to MAX_RESPONSE_BYTES regardless of whether
-// content-length is present (chunked / CDN responses often omit it).
-export async function readBoundedText(
-  response: Response,
-): Promise<string | null> {
-  const reader = response.body?.getReader();
-  if (!reader) return null;
-  const decoder = new TextDecoder();
-  let result = "";
-  let bytesRead = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    bytesRead += value.byteLength;
-    if (bytesRead > MAX_RESPONSE_BYTES) {
-      await reader.cancel();
-      return null;
-    }
-    result += decoder.decode(value, { stream: true });
-  }
-  result += decoder.decode();
-  return result;
-}
 
 /**
  * With `contextUsage`, a page the plain fetch can't read is read through

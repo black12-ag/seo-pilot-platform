@@ -5,18 +5,19 @@ An open-source foundation for an integrated SEO workspace, derived from
 `1523750b76857324573a086b1d93bd3c3612b5b1`. See [NOTICE.md](./NOTICE.md) and the
 preserved [MIT license](./LICENSE).
 
-This fork is at the foundation bootstrap stage. The planned SEO Pilot modules
-include site authority and evidence, keyword and competitor research, rank and
-backlink tracking, AI visibility, grounded content and review, publishing,
-automation, reporting, connectors, and self-hosted operations. Their integration
-and original interface remain to be implemented and verified; this repository
-does not claim the complete platform is ready.
+This fork adds an original public landing and project-scoped HTTPS/DNS site
+authority shared by Settings, MCP and SAM. The upstream foundation supplies SEO
+research, audits, ranks, backlinks and AI visibility with configured providers.
+The complete integration of recurring evidence, grounded content and review,
+publishing, automation, reporting and connectors remains in development; this
+repository does not claim the full platform is ready.
 
 Use Node.js 22 and the pinned package manager (`corepack pnpm`, version 10.30.1).
 Install with `corepack pnpm install --frozen-lockfile`. For a local source build,
-follow [Docker self-hosting](./docs/SELF_HOSTING_DOCKER.md), including its
-`compose.build.yaml` override, unique storage credentials, password accounts,
-and a loopback-only port. Provider credentials are optional for starting the
+follow [SEO Pilot source self-hosting](./docs/SELF_HOSTING_SEO_PILOT.md), using
+the source-build override, unique storage credentials, password accounts and a
+loopback-only port. [Site authority](./web/content/docs/self-hosting/site-authority.md)
+explains the exact-origin proof flow. Provider credentials are optional for starting the
 application; data, model, and connected-service features require their own
 credentials and may incur charges. Software self-hosting does not supply them.
 

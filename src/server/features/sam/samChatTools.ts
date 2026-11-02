@@ -16,6 +16,12 @@ import {
 } from "@/server/mcp/tools/ai-visibility-tools";
 import { tool, type Tool, type ToolSet } from "ai";
 import { z, type ZodRawShape } from "zod";
+import {
+  getSiteAuthorityTool,
+  issueSiteAuthorityChallengeTool,
+  checkSiteAuthorityChallengeTool,
+  revokeSiteAuthorityTool,
+} from "@/server/mcp/tools/site-authority";
 import { withPgClient } from "@/db";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { type ToolAuthContext, type ToolContext } from "@/server/mcp/context";
@@ -378,6 +384,14 @@ export function buildSamMcpTools(
     }),
     ...scrapeTools(project.domain),
     whoami: adaptTool(whoamiTool),
+    get_site_authority: adaptObjectTool(getSiteAuthorityTool),
+    issue_site_authority_challenge: adaptObjectTool(
+      issueSiteAuthorityChallengeTool,
+    ),
+    check_site_authority_challenge: adaptObjectTool(
+      checkSiteAuthorityChallengeTool,
+    ),
+    revoke_site_authority: adaptObjectTool(revokeSiteAuthorityTool),
     // Writes only: the project's memory is already injected into every turn as
     // a read-only context block, so get_project_context would just re-fetch it.
     update_project_context: adaptTool(buildUpdateProjectContextTool("sam")),

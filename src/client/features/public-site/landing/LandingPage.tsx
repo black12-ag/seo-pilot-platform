@@ -1,7 +1,7 @@
 import { LandingIllustration } from "./LandingIllustration";
 
 const repository = "https://github.com/black12-ag/seo-pilot-platform";
-const installGuide = `${repository}/blob/test/web/content/docs/self-hosting/docker.md`;
+const installGuide = `${repository}/blob/test/docs/SELF_HOSTING_SEO_PILOT.md`;
 
 export function LandingPage() {
   return (

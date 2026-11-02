@@ -2,6 +2,10 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { chunk } from "remeda";
 import { runBatch } from "@/db/runBatch";
 import {
+  lockProject,
+  invalidateSiteAuthority,
+} from "@/server/features/site-authority/repositories/siteAuthorityProjectWrites";
+import {
   projects,
   projectContextSections,
   projectCompetitors,
@@ -29,6 +33,12 @@ export async function saveWebsiteSetup(
   // them keeps the list guard below D1's bound-parameter limit for 100 rows.
   const insertedIds = sql.raw(competitors.map(({ id }) => `'${id}'`).join(","));
   await runBatch((tx) => [
+    lockProject(tx, input.projectId, organizationId),
+    ...invalidateSiteAuthority(tx, input.projectId, organizationId, {
+      reason: "website_changed",
+      nowMs: Date.now(),
+      condition: sql`p.archived_at is null and p.domain is null`,
+    }),
     tx
       .update(projects)
       .set({

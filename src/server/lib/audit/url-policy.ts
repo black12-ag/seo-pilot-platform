@@ -1,3 +1,4 @@
+import { resolvePublicDnsRecords } from "@/server/lib/public-dns";
 import { AppError } from "@/server/lib/errors";
 import { publicFetch } from "@/server/lib/public-fetch";
 import type { CrawlerAccess } from "@/shared/crawler-access";
@@ -18,8 +19,6 @@ const BLOCKED_HOST_SUFFIXES = [
   ".internal",
   ".home.arpa",
 ];
-
-const DOH_ENDPOINT = "https://cloudflare-dns.com/dns-query";
 
 function normalizeHost(hostname: string): string {
   let host = hostname.toLowerCase().trim();
@@ -132,38 +131,16 @@ function isBlockedHost(hostname: string): boolean {
   return false;
 }
 
-type DnsJsonAnswer = {
-  type?: number;
-  data?: string;
-};
-
-type DnsJsonResponse = {
-  Status?: number;
-  Answer?: DnsJsonAnswer[];
-};
-
 async function resolveAddressRecords(
   hostname: string,
   type: "A" | "AAAA",
 ): Promise<string[]> {
-  const response = await fetch(
-    `${DOH_ENDPOINT}?name=${encodeURIComponent(hostname)}&type=${type}`,
-    {
-      headers: { Accept: "application/dns-json" },
-      signal: AbortSignal.timeout(2_500),
-    },
-  );
-
-  if (!response.ok) return [];
-
-  const body: DnsJsonResponse = await response.json();
-  if (body.Status !== 0 || !Array.isArray(body.Answer)) return [];
-
+  const body = await resolvePublicDnsRecords(hostname, type);
+  if (body.status !== 0) return [];
   const expectedType = type === "A" ? 1 : 28;
-  return body.Answer.filter(
-    (answer): answer is Required<Pick<DnsJsonAnswer, "data" | "type">> =>
-      answer.type === expectedType && typeof answer.data === "string",
-  ).map((answer) => normalizeHost(answer.data));
+  return body.answers
+    .filter((answer) => answer.type === expectedType)
+    .map((answer) => normalizeHost(answer.data));
 }
 
 async function hostnameResolvesToBlockedAddress(

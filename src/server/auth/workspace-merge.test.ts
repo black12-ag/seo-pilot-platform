@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createClient, type Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import {
@@ -44,6 +45,7 @@ beforeAll(async () => {
 
   await client.executeMultiple(`
     PRAGMA foreign_keys = ON;
+    CREATE TABLE "user" (id TEXT PRIMARY KEY);
     CREATE TABLE organization (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -82,6 +84,12 @@ beforeAll(async () => {
       organization_id TEXT NOT NULL REFERENCES organization(id) ON DELETE CASCADE
     );
   `);
+  await client.executeMultiple(
+    readFileSync("drizzle/sqlite/0063_site_authority.sql", "utf8").replaceAll(
+      "--> statement-breakpoint",
+      "",
+    ),
+  );
 
   ({ WorkspaceMergeService } = await import("./workspace-merge"));
 });

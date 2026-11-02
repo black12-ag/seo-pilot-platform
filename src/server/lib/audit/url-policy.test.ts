@@ -3,6 +3,7 @@ import type { AppError } from "@/server/lib/errors";
 import {
   normalizeAndValidateStartUrl,
   resolveStartUrlRedirects,
+  isShopifyHost,
 } from "@/server/lib/audit/url-policy";
 
 describe("normalizeAndValidateStartUrl", () => {
@@ -35,6 +36,48 @@ describe("normalizeAndValidateStartUrl", () => {
       } satisfies Partial<AppError>);
     },
   );
+
+  it.each(["10.0.0.1", "::1", "::ffff:7f00:1"])(
+    "blocks private DNS answer %s after bounded resolver extraction",
+    async (data) => {
+      vi.mocked(fetch).mockImplementation(async (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        const type = url.searchParams.get("type") === "A" ? 1 : 28;
+        return Response.json({
+          Status: 0,
+          Question: [{ name: "example.com.", type }],
+          Answer: [{ name: "example.com.", type, TTL: 30, data }],
+        });
+      });
+      await expect(
+        normalizeAndValidateStartUrl("https://example.com"),
+      ).rejects.toMatchObject({ code: "CRAWL_TARGET_BLOCKED" });
+    },
+  );
+
+  it("keeps resolver transport and format failures fail-open for crawl preflight", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("resolver unavailable"));
+    await expect(normalizeAndValidateStartUrl("example.com")).resolves.toBe(
+      "https://example.com/",
+    );
+    vi.mocked(fetch).mockImplementation(async () => new Response("malformed"));
+    await expect(normalizeAndValidateStartUrl("example.com")).resolves.toBe(
+      "https://example.com/",
+    );
+  });
+
+  it("still identifies Shopify from an A record", async () => {
+    vi.mocked(fetch).mockImplementation(async () =>
+      Response.json({
+        Status: 0,
+        Question: [{ name: "example.com.", type: 1 }],
+        Answer: [
+          { name: "example.com.", type: 1, TTL: 60, data: "23.227.38.65" },
+        ],
+      }),
+    );
+    await expect(isShopifyHost("example.com")).resolves.toBe(true);
+  });
 });
 
 const dnsOk = () =>

@@ -74,7 +74,7 @@ describe("public welcome document", () => {
       $("a[href='https://github.com/black12-ag/seo-pilot-platform']").length,
     ).toBeGreaterThan(0);
     expect(
-      $("a[href$='/web/content/docs/self-hosting/docker.md']").length,
+      $("a[href$='/docs/SELF_HOSTING_SEO_PILOT.md']").length,
     ).toBeGreaterThan(0);
     $("a").each((_, link) => {
       const href = $(link).attr("href");

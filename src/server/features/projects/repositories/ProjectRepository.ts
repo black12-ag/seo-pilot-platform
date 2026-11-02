@@ -1,5 +1,10 @@
 import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { runBatch } from "@/db/runBatch";
+import {
+  lockProject,
+  invalidateSiteAuthority,
+} from "@/server/features/site-authority/repositories/siteAuthorityProjectWrites";
 import { projects } from "@/db/schema";
 import { AppError } from "@/server/lib/errors";
 
@@ -103,48 +108,58 @@ async function updateProject(
     market?: { locationCode: number; languageCode: string };
   },
 ) {
-  const [row] = await db
-    .update(projects)
-    .set({ name: input.name, domain: input.domain ?? null, ...input.market })
-    .where(
-      and(
-        eq(projects.id, projectId),
-        eq(projects.organizationId, organizationId),
-        isNull(projects.archivedAt),
-      ),
-    )
-    .returning();
-
-  if (!row) {
-    throw new AppError("NOT_FOUND");
-  }
-
+  await writeProjectWebsite(projectId, organizationId, {
+    name: input.name,
+    domain: input.domain ?? null,
+    ...input.market,
+  });
+  const row = await getProjectForOrganization(projectId, organizationId);
+  if (!row) throw new AppError("NOT_FOUND");
   return row;
 }
 
-// Save website setup atomically without rewriting the project name.
+async function writeProjectWebsite(
+  projectId: string,
+  organizationId: string,
+  values: {
+    domain: string | null;
+    name?: string;
+    locationCode?: number;
+    languageCode?: string;
+  },
+) {
+  await runBatch((tx) => [
+    lockProject(tx, projectId, organizationId),
+    ...invalidateSiteAuthority(tx, projectId, organizationId, {
+      reason: "website_changed",
+      nowMs: Date.now(),
+      condition:
+        values.domain === null
+          ? sql`p.archived_at is null and p.domain is not null`
+          : sql`p.archived_at is null and (p.domain is null or p.domain <> ${values.domain})`,
+    }),
+    tx
+      .update(projects)
+      .set(values)
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.organizationId, organizationId),
+          isNull(projects.archivedAt),
+        ),
+      ),
+  ]);
+}
+
 async function updateProjectWebsite(
   projectId: string,
   organizationId: string,
   domain: string,
   market: { locationCode: number; languageCode: string },
 ) {
-  const [row] = await db
-    .update(projects)
-    .set({ domain, ...market })
-    .where(
-      and(
-        eq(projects.id, projectId),
-        eq(projects.organizationId, organizationId),
-        isNull(projects.archivedAt),
-      ),
-    )
-    .returning();
-
-  if (!row) {
-    throw new AppError("NOT_FOUND");
-  }
-
+  await writeProjectWebsite(projectId, organizationId, { domain, ...market });
+  const row = await getProjectForOrganization(projectId, organizationId);
+  if (!row) throw new AppError("NOT_FOUND");
   return row;
 }
 
@@ -193,39 +208,49 @@ async function listArchivedProjects(organizationId: string) {
 }
 
 async function restoreProject(projectId: string, organizationId: string) {
-  const [row] = await db
-    .update(projects)
-    .set({ archivedAt: null })
-    .where(
-      and(
-        eq(projects.id, projectId),
-        eq(projects.organizationId, organizationId),
-        isNotNull(projects.archivedAt),
+  await runBatch((tx) => [
+    lockProject(tx, projectId, organizationId),
+    ...invalidateSiteAuthority(tx, projectId, organizationId, {
+      reason: "project_archived",
+      nowMs: Date.now(),
+      condition: sql`p.archived_at is not null`,
+    }),
+    tx
+      .update(projects)
+      .set({ archivedAt: null })
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.organizationId, organizationId),
+          isNotNull(projects.archivedAt),
+        ),
       ),
-    )
-    .returning({ id: projects.id });
-
-  if (!row) {
+  ]);
+  if (!(await getProjectForOrganization(projectId, organizationId)))
     throw new AppError("NOT_FOUND");
-  }
 }
 
 async function archiveProject(projectId: string, organizationId: string) {
-  const [row] = await db
-    .update(projects)
-    .set({ archivedAt: sql`(current_timestamp)` })
-    .where(
-      and(
-        eq(projects.id, projectId),
-        eq(projects.organizationId, organizationId),
-        isNull(projects.archivedAt),
+  await runBatch((tx) => [
+    lockProject(tx, projectId, organizationId),
+    ...invalidateSiteAuthority(tx, projectId, organizationId, {
+      reason: "project_archived",
+      nowMs: Date.now(),
+      condition: sql`p.archived_at is null`,
+    }),
+    tx
+      .update(projects)
+      .set({ archivedAt: sql`(current_timestamp)` })
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.organizationId, organizationId),
+          isNull(projects.archivedAt),
+        ),
       ),
-    )
-    .returning({ id: projects.id });
-
-  if (!row) {
+  ]);
+  if (!(await getArchivedProjectForOrganization(projectId, organizationId)))
     throw new AppError("NOT_FOUND");
-  }
 }
 
 export const ProjectRepository = {

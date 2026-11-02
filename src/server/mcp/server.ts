@@ -22,6 +22,12 @@ import {
 } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
+  getSiteAuthorityTool,
+  issueSiteAuthorityChallengeTool,
+  checkSiteAuthorityChallengeTool,
+  revokeSiteAuthorityTool,
+} from "@/server/mcp/tools/site-authority";
+import {
   createMcpToolContext,
   type McpProps,
   type ToolContext,
@@ -246,6 +252,10 @@ export function registerOpenSeoTools(
   ) => void,
 ) {
   register(whoamiTool);
+  register(getSiteAuthorityTool);
+  register(issueSiteAuthorityChallengeTool);
+  register(checkSiteAuthorityChallengeTool);
+  register(revokeSiteAuthorityTool);
   register(listProjectsTool);
   register(createProjectTool);
   register(researchProjectWebsiteTool);

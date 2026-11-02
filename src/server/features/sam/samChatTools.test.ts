@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Tool } from "ai";
-import { toModelOutput, waitingAuditStatusTool } from "./samChatTools";
+import { z } from "zod";
+import { makeToolContext } from "@/server/mcp/tools/tool-test-support";
+import {
+  buildSamMcpTools,
+  toModelOutput,
+  waitingAuditStatusTool,
+} from "./samChatTools";
 
 vi.mock("cloudflare:workers", () => ({
   env: {},
@@ -31,6 +37,25 @@ function buildTool(outputs: unknown[]) {
 }
 
 const callOptions = { toolCallId: "t", messages: [] };
+
+it("offers the four shared authority tools without a model-supplied projectId", () => {
+  const tools = buildSamMcpTools(makeToolContext().auth, {
+    id: "bound-project",
+    domain: null,
+  });
+  for (const name of [
+    "get_site_authority",
+    "issue_site_authority_challenge",
+    "check_site_authority_challenge",
+    "revoke_site_authority",
+  ]) {
+    const schema = tools[name]?.inputSchema;
+    expect(schema).toBeInstanceOf(z.ZodObject);
+    if (!(schema instanceof z.ZodObject))
+      throw new Error("Missing tool schema");
+    expect(schema.shape).not.toHaveProperty("projectId");
+  }
+});
 
 afterEach(() => {
   vi.useRealTimers();
