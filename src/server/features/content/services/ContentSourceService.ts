@@ -1,6 +1,11 @@
 import { ContentEvidenceRepository } from "@/server/features/content/repositories/ContentEvidenceRepository";
 import { preparedSourceWriteSchema } from "@/server/features/content/repositories/contentRevisionWrites";
 import { contentAccess } from "./contentAccess";
+import { captureUrls } from "./contentUrlCapture";
+import {
+  CONTENT_SOURCE_BYTES,
+  CONTENT_URL_SOURCE_RESPONSE_BYTES,
+} from "@/types/schemas/contentSourceIntake";
 import { sha256Hex } from "@/server/lib/audit/ids";
 import { AppError } from "@/server/lib/errors";
 import {
@@ -25,6 +30,7 @@ async function capture(actor: ContentActor, raw: CaptureContentSourceInput) {
       ...input.source,
       sourceText: input.source.text,
       auditReference: null,
+      urlCapture: null,
       extractionMethod: "owner_paste",
       extractionVersion: "1",
       extractionStatus: input.source.text.length ? "usable" : "empty",
@@ -51,6 +57,7 @@ async function capture(actor: ContentActor, raw: CaptureContentSourceInput) {
       publisherDate: null,
       language: null,
       market: null,
+      urlCapture: null,
       auditReference: {
         auditId: input.source.auditId,
         pageId: observation.page?.id ?? null,
@@ -79,6 +86,7 @@ async function capture(actor: ContentActor, raw: CaptureContentSourceInput) {
     extractionStatus: source.extractionStatus,
     extractionReason: source.extractionReason,
     auditReference: source.auditReference,
+    urlCapture: source.urlCapture,
   };
   const write = preparedSourceWriteSchema.parse({
     mutationId: input.mutationId,
@@ -107,12 +115,27 @@ async function get(actor: ContentActor, projectId: string, sourceId: string) {
   if (
     !stored ||
     stored.source.extractionStatus === "erased" ||
-    (stored.source.kind === "audit" && !stored.auditReference)
+    (stored.source.kind === "audit" && !stored.auditReference) ||
+    (stored.source.kind === "web" &&
+      (!stored.urlCapture ||
+        !["usable", "partial"].includes(stored.source.extractionStatus)))
   )
     throw new AppError("CONFLICT", "source_unavailable");
   const { mutationReceiptId: _receiptId, ...publicSource } = stored.source;
   const source = savedContentSourceSchema.parse({
     ...publicSource,
+    urlCapture: stored.urlCapture && {
+      requestedUrl: stored.urlCapture.requestedUrl,
+      resolvedUrl: stored.urlCapture.resolvedUrl,
+      httpStatus: stored.urlCapture.httpStatus,
+      redirectCount: stored.urlCapture.redirectCount,
+      fetchAttempted: Boolean(stored.urlCapture.fetchAttempted),
+      responseComplete: Boolean(stored.urlCapture.responseComplete),
+      textTruncated: Boolean(stored.urlCapture.textTruncated),
+      extractedBytes: stored.urlCapture.extractedBytes,
+      responseByteLimit: CONTENT_URL_SOURCE_RESPONSE_BYTES,
+      extractedByteLimit: CONTENT_SOURCE_BYTES,
+    },
     auditReference: stored.auditReference && {
       auditId: stored.auditReference.auditId,
       pageId: stored.auditReference.pageId,
@@ -137,4 +160,9 @@ async function list(actor: ContentActor, raw: ListContentSourcesInput) {
   return result;
 }
 
-export const ContentSourceService = { capture, get, list } as const;
+export const ContentSourceService = {
+  capture,
+  captureUrls,
+  get,
+  list,
+} as const;

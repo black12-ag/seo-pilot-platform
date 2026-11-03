@@ -12,20 +12,16 @@ import {
   contentSourcesQuery,
   contentHistoryQuery,
 } from "@/client/features/content/contentQueries";
+import { useContentSourceCapture } from "@/client/features/content/editor/useContentSourceCapture";
 import { ContentEvidenceRail } from "@/client/features/content/editor/ContentEvidenceRail";
 import { ContentHistoryPanel } from "@/client/features/content/history/ContentHistoryPanel";
 import {
-  captureContentSource,
   archiveContent,
   getContentSource,
   getContentRevisionStatus,
   saveContentRevision,
 } from "@/serverFunctions/content";
 import { getContentEligibility } from "@/serverFunctions/content-review";
-import type {
-  ContentSourceInput,
-  SavedContentSource,
-} from "@/types/schemas/contentEvidence";
 import type { ContentLocale } from "@/types/schemas/content";
 
 export const Route = createFileRoute("/_app/p/$projectId/content/$contentId")({
@@ -124,29 +120,20 @@ function ContentPage({
     enabled: Boolean(revisionId),
   });
   const [restoring, setRestoring] = useState(false);
-  const [captured, setCaptured] = useState<SavedContentSource[]>([]);
+  const {
+    captured,
+    setCaptured,
+    sourceError,
+    setSourceError,
+    capture,
+    captureUrls,
+  } = useContentSourceCapture(projectId);
   const [unavailableRestored, setUnavailableRestored] = useState<string[]>([]);
   const [sourceCursor, setSourceCursor] = useState<string | undefined>();
-  const [sourceError, setSourceError] = useState<string | null>(null);
   const sourcePage = useQuery(contentSourcesQuery(projectId, sourceCursor));
-  const attempt = useRef<{ key: string; mutationId: string } | null>(null);
   const archiveAttempt = useRef<{ version: number; mutationId: string } | null>(
     null,
   );
-  async function capture(source: ContentSourceInput) {
-    const key = JSON.stringify(source);
-    if (attempt.current?.key !== key)
-      attempt.current = { key, mutationId: crypto.randomUUID() };
-    const result = await captureContentSource({
-      data: { projectId, mutationId: attempt.current.mutationId, source },
-    });
-    setCaptured((current) => [
-      ...current.filter((item) => item.id !== result.source.id),
-      result.source,
-    ]);
-    attempt.current = null;
-    void client.invalidateQueries({ queryKey: ["content-sources", projectId] });
-  }
   if (!query.data) {
     return (
       <main className="p-6">
@@ -337,6 +324,7 @@ function ContentPage({
               setRestoring(false);
             }}
             onCapture={capture}
+            onCaptureUrls={captureUrls}
             onSave={async (input) => {
               const result = await saveContentRevision({ data: input });
               await client.invalidateQueries({

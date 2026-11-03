@@ -65,8 +65,10 @@ schedules have been reviewed. Paid recurring rendering/Lighthouse and the
 remaining complete-platform modules are still in development.
 
 The development branch's [manual content studio guide](../web/content/docs/self-hosting/content-studio.md)
-describes briefs, attributed sources, Markdown revisions, human review and
-exports. Public URL capture, paid generation and publishing remain unavailable.
+describes briefs, attributed sources, bounded public URL capture, Markdown
+revisions, human review and exports. Capture works without model or data provider
+keys when the protected transport is configured and available. Paid generation,
+paid rendering checks and publishing remain in development.
 
 ## Stop and restart
 

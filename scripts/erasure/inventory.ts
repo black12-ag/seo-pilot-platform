@@ -242,6 +242,9 @@ export async function buildInventory(db: Db, user: UserRow) {
     report_templates: await projectCount(schema.reportTemplates),
     content_items: await projectCount(schema.contentItems),
     content_sources: await projectCount(schema.contentSources),
+    content_source_url_captures: await projectCount(
+      schema.contentSourceUrlCaptures,
+    ),
     attributed_content_sources: await db.$count(
       schema.contentSources,
       eq(schema.contentSources.createdByUserId, user.id),

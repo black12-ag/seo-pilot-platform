@@ -2,12 +2,13 @@ import { Button } from "@/client/components/ui/button";
 import {
   CONTENT_CLAIM_EVIDENCE_LIMIT,
   type ContentClaimInput,
+  type SavedContentSource,
 } from "@/types/schemas/contentEvidence";
 export type Source = {
   id: string;
   title: string;
   text: string;
-  kind: "pasted" | "audit";
+  kind: SavedContentSource["kind"];
 };
 
 export function ClaimList({

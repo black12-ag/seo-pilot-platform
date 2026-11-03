@@ -103,7 +103,7 @@ async function writeRevision(
       : sql.join(
           input.sourceHashes.map(
             (source) =>
-              sql`exists (select 1 from content_sources s where s.id = ${source.sourceId} and s.project_id = ${r.projectId} and s.text_hash = ${source.textHash} and s.extraction_status <> 'erased' and (s.kind <> 'audit' or exists (select 1 from content_source_audit_references ar where ar.source_id = s.id and ar.project_id = s.project_id)))`,
+              sql`exists (select 1 from content_sources s where s.id = ${source.sourceId} and s.project_id = ${r.projectId} and s.text_hash = ${source.textHash} and s.extraction_status <> 'erased' and (s.kind <> 'web' or (s.extraction_status in ('usable', 'partial') and exists (select 1 from content_source_url_captures u where u.source_id = s.id and u.project_id = s.project_id))) and (s.kind <> 'audit' or exists (select 1 from content_source_audit_references ar where ar.source_id = s.id and ar.project_id = s.project_id)))`,
           ),
           sql` and `,
         );

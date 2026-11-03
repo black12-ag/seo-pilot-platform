@@ -1,7 +1,10 @@
 import { z } from "zod";
+import {
+  CONTENT_SOURCE_BYTES,
+  contentUrlCaptureSchema,
+} from "./contentSourceIntake";
 
 export const CONTENT_SOURCE_LIMIT = 10;
-const CONTENT_SOURCE_BYTES = 100 * 1024;
 export const CONTENT_CLAIM_LIMIT = 100;
 export const CONTENT_CLAIM_EVIDENCE_LIMIT = 10;
 
@@ -90,7 +93,7 @@ export const savedContentClaimSchema = contentClaimInputSchema.extend({
 export const savedContentSourceSchema = z.strictObject({
   id,
   projectId: id,
-  kind: z.enum(["pasted", "audit"]),
+  kind: z.enum(["pasted", "audit", "web"]),
   title: z.string(),
   attribution: z.string(),
   sourceText,
@@ -104,6 +107,7 @@ export const savedContentSourceSchema = z.strictObject({
   extractionStatus: z.string(),
   extractionReason: z.string().nullable(),
   createdByUserId: id.nullable(),
+  urlCapture: contentUrlCaptureSchema.nullable().default(null),
   auditReference: z
     .strictObject({
       auditId: id,
@@ -115,7 +119,7 @@ export const savedContentSourceSchema = z.strictObject({
 const contentSourceSummarySchema = z.strictObject({
   id,
   title: z.string(),
-  kind: z.enum(["pasted", "audit"]),
+  kind: z.enum(["pasted", "audit", "web"]),
   capturedAtMs: z.number().int().nonnegative(),
   extractionStatus: z.string(),
   available: z.boolean(),

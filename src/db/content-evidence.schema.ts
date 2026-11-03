@@ -51,6 +51,28 @@ export const contentSources = sqliteTable(
   ],
 );
 
+export const contentSourceUrlCaptures = sqliteTable(
+  "content_source_url_captures",
+  {
+    sourceId: text("source_id").primaryKey(),
+    projectId: text("project_id").notNull(),
+    requestedUrl: text("requested_url").notNull(),
+    resolvedUrl: text("resolved_url"),
+    httpStatus: integer("http_status"),
+    redirectCount: integer("redirect_count").notNull(),
+    fetchAttempted: integer("fetch_attempted").notNull(),
+    responseComplete: integer("response_complete").notNull(),
+    textTruncated: integer("text_truncated").notNull(),
+    extractedBytes: integer("extracted_bytes").notNull(),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.projectId, t.sourceId],
+      foreignColumns: [contentSources.projectId, contentSources.id],
+    }).onDelete("cascade"),
+  ],
+);
+
 export const contentSourceAuditReferences = sqliteTable(
   "content_source_audit_references",
   {

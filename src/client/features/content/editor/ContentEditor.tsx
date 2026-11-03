@@ -14,7 +14,12 @@ import { ContentBriefForm } from "./ContentBriefForm";
 import { ContentEditorFields, ContextRefresh } from "./ContentEditorFields";
 import { ContentClaimPanel } from "./ContentClaimPanel";
 import { ContentPreview } from "./ContentPreview";
+import { ContentEditorNavigation } from "./ContentEditorNavigation";
 import { ContentEditorSources } from "./ContentEditorSources";
+import type {
+  CaptureContentUrlsInput,
+  CaptureContentUrlsResult,
+} from "@/types/schemas/contentSourceIntake";
 
 type Draft = Omit<SaveContentRevisionInput, "mutationId">;
 export type ContentEditorTab =
@@ -72,6 +77,7 @@ export function ContentEditor({
   onTabChange,
   onSave,
   onCapture,
+  onCaptureUrls,
 }: {
   revision: SavedContentRevision;
   sources: SavedContentSource[];
@@ -90,6 +96,9 @@ export function ContentEditor({
     input: SaveContentRevisionInput,
   ) => Promise<SaveContentRevisionResult>;
   onCapture: (source: ContentSourceInput) => Promise<void>;
+  onCaptureUrls: (
+    requests: CaptureContentUrlsInput["requests"],
+  ) => Promise<CaptureContentUrlsResult>;
 }) {
   const [draft, setDraft] = useState(() => draftFromRevision(revision));
   const [savedContextJson, setSavedContextJson] = useState(
@@ -104,12 +113,13 @@ export function ContentEditor({
   const [locallyArchived, setLocallyArchived] = useState(false);
   const [briefDirty, setBriefDirty] = useState(false);
   const [sourceDirty, setSourceDirty] = useState(false);
+  const [urlDirty, setUrlDirty] = useState(false);
   const [claimDirty, setClaimDirty] = useState(false);
   const [briefKey, setBriefKey] = useState(0);
   const attempt = useRef<{ serialized: string; mutationId: string } | null>(
     null,
   );
-  const unsubmitted = briefDirty || sourceDirty || claimDirty;
+  const unsubmitted = briefDirty || sourceDirty || urlDirty || claimDirty;
   const dirty = JSON.stringify(draft) !== baseline || unsubmitted;
   useBlocker({
     shouldBlockFn: ({ current, next }) =>
@@ -299,25 +309,8 @@ export function ContentEditor({
           }
         />
       ) : null}
-      <fieldset disabled={pending} className="space-y-5">
-        <nav
-          aria-label="Content editor sections"
-          className="flex flex-wrap gap-2 border-b pb-2"
-        >
-          {(["write", "sources", "claims", "preview", "brief"] as const).map(
-            (item) => (
-              <Button
-                key={item}
-                type="button"
-                variant={tab === item ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => onTabChange(item)}
-              >
-                {item[0].toUpperCase() + item.slice(1)}
-              </Button>
-            ),
-          )}
-        </nav>
+      <fieldset disabled={pending} className="min-w-0 space-y-5">
+        <ContentEditorNavigation tab={tab} onTabChange={onTabChange} />
         {tab === "write" ? (
           <ContentEditorFields draft={draft} setDraft={setDraft} />
         ) : null}
@@ -327,7 +320,9 @@ export function ContentEditor({
             setDraft={setDraft}
             briefKey={briefKey}
             onCapture={onCapture}
+            onCaptureUrls={onCaptureUrls}
             setSourceDirty={setSourceDirty}
+            setUrlDirty={setUrlDirty}
             sources={sources}
             unavailableSources={unavailableSources}
           />

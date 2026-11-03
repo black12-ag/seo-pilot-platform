@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   getContentRevisionTool,
   exportContentRevisionTool,
@@ -11,6 +12,7 @@ import {
   saveContentRevisionTool,
 } from "@/server/mcp/tools/content-tools";
 import { adaptSchemaMcpTool } from "./adaptMcpTool";
+import { captureContentUrlsTool } from "@/server/mcp/tools/content-url-tools";
 import {
   getContentReviewTool,
   requestContentReviewTool,
@@ -18,6 +20,7 @@ import {
 
 export function contentTools(context: ToolContext, projectId: string) {
   const capture = captureContentSourceTool("sam");
+  const captureUrls = captureContentUrlsTool("sam");
   const create = createContentBriefTool("sam");
   const save = saveContentRevisionTool("sam");
   const archive = archiveContentTool("sam");
@@ -27,6 +30,12 @@ export function contentTools(context: ToolContext, projectId: string) {
   const getReview = getContentReviewTool("sam");
   const requestReview = requestContentReviewTool("sam");
   return {
+    capture_content_urls: adaptSchemaMcpTool(
+      captureUrls,
+      z.object({ requests: captureUrls.config.inputSchema.shape.requests }),
+      context,
+      projectId,
+    ),
     get_content_revision: adaptSchemaMcpTool(
       getRevision,
       getRevision.config.inputSchema.omit({ projectId: true }),

@@ -1,5 +1,6 @@
-import { afterAll, beforeEach, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { z } from "zod";
+import type * as RuntimeEnv from "@/server/lib/runtime-env";
 const { testDb, request } = await vi.hoisted(async () => {
   const { createSiteAuthorityTestDb } =
     await import("../server/features/site-authority/siteAuthorityTestDb");
@@ -20,8 +21,10 @@ vi.mock("cloudflare:workers", () => ({
 }));
 vi.mock("@/db", () => ({ db: testDb.db }));
 vi.mock("@/db/runBatch", () => ({ runBatch: testDb.runBatch }));
-vi.mock("@/server/lib/runtime-env", () => ({
+vi.mock("@/server/lib/runtime-env", async (original) => ({
+  ...(await original<typeof RuntimeEnv>()),
   usesBetterAuthServer: async () => true,
+  getWorkersEnv: async () => null,
 }));
 vi.mock("@/serverFunctions/middleware", () => ({ requireProjectContext: [] }));
 vi.mock("@tanstack/react-start", () => ({
@@ -43,12 +46,17 @@ vi.mock("@tanstack/react-start", () => ({
 }));
 import {
   captureContentSource,
+  captureContentUrls,
   createContentBrief,
   saveContentRevision,
 } from "./content";
 
 beforeEach(testDb.seedProject);
 afterAll(testDb.close);
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 it("captures under the verified project and rejects forged actor fields", async () => {
   const data = {
@@ -120,4 +128,47 @@ it("saves with the web surface and returns a conflict without replacing the draf
     code: "revision_conflict",
     currentHeadVersion: 2,
   });
+});
+
+it("captures URLs with verified web identity and rejects malformed and unauthorized requests", async () => {
+  vi.stubEnv("CRAWL_GATEWAY_URL", "https://gateway.example/fetch");
+  vi.stubEnv("CRAWL_GATEWAY_SECRET", "fixture-secret");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.hostname === "cloudflare-dns.com")
+        return Response.json({ Status: 0, Answer: [] });
+      return new Response(`<main>${"source evidence ".repeat(30)}</main>`, {
+        headers: { "content-type": "text/html" },
+      });
+    }),
+  );
+  const data = {
+    projectId: "project",
+    requests: [{ mutationId: "web-url", url: "https://example.com/" }],
+  };
+  const forged = { ...data, surface: "mcp" };
+  await expect(captureContentUrls({ data: forged })).rejects.toThrow();
+  await expect(
+    captureContentUrls({ data: { ...data, requests: [] } }),
+  ).rejects.toThrow();
+  await expect(
+    captureContentUrls({ data: { ...data, projectId: "foreign-project" } }),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  const result = await captureContentUrls({ data });
+  expect(result.outcomes).toMatchObject([
+    { state: "captured", extractionStatus: "usable" },
+  ]);
+  expect(JSON.stringify(result)).not.toContain("source evidence");
+  testDb.mutateMembershipInNextBatchAt(3, null);
+  await expect(
+    captureContentUrls({
+      data: {
+        ...data,
+        requests: [{ mutationId: "removed", url: "https://example.com/other" }],
+      },
+    }),
+  ).rejects.toThrow();
 });

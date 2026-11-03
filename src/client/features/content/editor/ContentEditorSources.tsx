@@ -6,14 +6,21 @@ import {
   type SavedContentSource,
 } from "@/types/schemas/contentEvidence";
 import type { SaveContentRevisionInput } from "@/types/schemas/content";
+import type {
+  CaptureContentUrlsInput,
+  CaptureContentUrlsResult,
+} from "@/types/schemas/contentSourceIntake";
 import { ContentSourcePanel } from "./ContentSourcePanel";
+import { ContentUrlCapture } from "./ContentUrlCapture";
 type Draft = Omit<SaveContentRevisionInput, "mutationId">;
 export function ContentEditorSources({
   draft,
   setDraft,
   briefKey,
   onCapture,
+  onCaptureUrls,
   setSourceDirty,
+  setUrlDirty,
   sources,
   unavailableSources,
 }: {
@@ -21,7 +28,11 @@ export function ContentEditorSources({
   setDraft: Dispatch<SetStateAction<Draft>>;
   briefKey: number;
   onCapture: (source: ContentSourceInput) => Promise<void>;
+  onCaptureUrls: (
+    requests: CaptureContentUrlsInput["requests"],
+  ) => Promise<CaptureContentUrlsResult>;
   setSourceDirty: (dirty: boolean) => void;
+  setUrlDirty: (dirty: boolean) => void;
   sources: SavedContentSource[];
   unavailableSources: string[];
 }) {
@@ -35,6 +46,11 @@ export function ContentEditorSources({
         projectId={draft.projectId}
         onCapture={onCapture}
         onDirtyChange={setSourceDirty}
+      />
+      <ContentUrlCapture
+        projectId={draft.projectId}
+        onCapture={onCaptureUrls}
+        onDirtyChange={setUrlDirty}
       />
       {unavailableSources
         .filter((id) => draft.sourceIds.includes(id))
@@ -62,7 +78,7 @@ export function ContentEditorSources({
       {sources.map((source) => (
         <label
           key={source.id}
-          className="flex gap-2 rounded border p-3 text-sm"
+          className="flex min-w-0 gap-2 rounded border p-3 text-sm"
         >
           <input
             type="checkbox"
@@ -80,10 +96,21 @@ export function ContentEditorSources({
               }))
             }
           />
-          <span>
+          <span className="min-w-0 break-all">
             {source.title} · {source.extractionStatus} · captured{" "}
             {new Date(source.capturedAtMs).toLocaleDateString()} · publisher
             date {source.publisherDate ?? "unknown"} · {source.extractionMethod}
+            {source.kind === "web" && source.urlCapture ? (
+              <span className="block">
+                Requested: {source.urlCapture.requestedUrl}
+                <br />
+                Resolved: {source.urlCapture.resolvedUrl ?? "unknown"} ·
+                Language: {source.language ?? "unknown"} · Market:{" "}
+                {source.market ?? "unknown"} · Response complete:{" "}
+                {source.urlCapture.responseComplete ? "yes" : "no"} · Text
+                truncated: {source.urlCapture.textTruncated ? "yes" : "no"}
+              </span>
+            ) : null}
           </span>
         </label>
       ))}

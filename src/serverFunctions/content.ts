@@ -13,6 +13,7 @@ import {
   saveContentRevisionInputSchema,
 } from "@/types/schemas/content";
 import { captureContentSourceInputSchema } from "@/types/schemas/contentEvidence";
+import { captureContentUrlsInputSchema } from "@/types/schemas/contentSourceIntake";
 
 function webActor(
   context: {
@@ -37,6 +38,13 @@ export const captureContentSource = createServerFn({ method: "POST" })
   .validator(captureContentSourceInputSchema)
   .handler(async ({ context, data }) =>
     ContentSourceService.capture(webActor(context, data.projectId), data),
+  );
+
+export const captureContentUrls = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(captureContentUrlsInputSchema)
+  .handler(async ({ context, data }) =>
+    ContentSourceService.captureUrls(webActor(context, data.projectId), data),
   );
 
 export const getContentRevision = createServerFn({ method: "GET" })

@@ -1,18 +1,4 @@
-import {
-  getContentRevisionTool,
-  exportContentRevisionTool,
-} from "@/server/mcp/tools/content-read-tools";
-import {
-  archiveContentTool,
-  listContentTool,
-  captureContentSourceTool,
-  createContentBriefTool,
-  saveContentRevisionTool,
-} from "@/server/mcp/tools/content-tools";
-import {
-  getContentReviewTool,
-  requestContentReviewTool,
-} from "@/server/mcp/tools/content-review-tools";
+import { registerContentTools } from "./contentToolRegistration";
 import {
   getAuditScheduleTool,
   estimateAuditScheduleTool,
@@ -277,15 +263,7 @@ export function registerOpenSeoTools(
     tool: OpenSeoToolDefinition<Input>,
   ) => void,
 ) {
-  register(captureContentSourceTool("mcp"));
-  register(archiveContentTool("mcp"));
-  register(listContentTool("mcp"));
-  register(getContentRevisionTool("mcp"));
-  register(exportContentRevisionTool("mcp"));
-  register(getContentReviewTool("mcp"));
-  register(requestContentReviewTool("mcp"));
-  register(createContentBriefTool("mcp"));
-  register(saveContentRevisionTool("mcp"));
+  registerContentTools(register);
   register(whoamiTool);
   register(getSiteAuthorityTool);
   register(issueSiteAuthorityChallengeTool);

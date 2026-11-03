@@ -122,6 +122,7 @@ export const {
   contentReviewEvents,
   contentSources,
   contentSourceAuditReferences,
+  contentSourceUrlCaptures,
   contentRevisionSources,
   contentClaims,
   contentClaimEvidence,

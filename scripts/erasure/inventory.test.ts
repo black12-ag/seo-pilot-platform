@@ -15,12 +15,14 @@ describe.skipIf(testDb.provider !== "postgres")("erasure inventory", () => {
     if (!testDb.pg) throw new Error("PostgreSQL fixture required");
     await testDb.executeMultiple(`
       INSERT INTO content_mutations (id,project_id,mutation_id,request_hash,kind,result_id,completed,created_at_ms) VALUES ('receipt','project','capture','hash','capture','source',1,1);
-      INSERT INTO content_sources (id,project_id,mutation_receipt_id,kind,title,attribution,source_text,text_hash,captured_at_ms,extraction_method,extraction_version,extraction_status,created_by_user_id) VALUES ('source','project','receipt','pasted','Title','Owner','Text','hash',1,'pasted','1','usable','user');
+      INSERT INTO content_sources (id,project_id,mutation_receipt_id,kind,title,attribution,source_text,text_hash,captured_at_ms,extraction_method,extraction_version,extraction_status,created_by_user_id) VALUES ('source','project','receipt','web','Title','Owner','Text','hash',1,'public_html_text','public-source-v1','usable','user');
+      INSERT INTO content_source_url_captures VALUES ('source','project','https://example.com/',null,null,0,0,0,0,4);
     `);
     const db = drizzle(testDb.pg);
     const user = { id: "user", name: "User", email: "authority@example.com" };
     expect((await buildInventory(db, user)).databaseCounts).toMatchObject({
       content_sources: 1,
+      content_source_url_captures: 1,
       attributed_content_sources: 1,
     });
     await testDb.executeMultiple(`

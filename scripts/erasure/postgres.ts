@@ -81,6 +81,9 @@ export async function erasePostgres(
       sql`update content_revisions set brief_json = '{}', markdown = '', metadata_json = '{}', context_json = '{}', context_hash = '', source_set_hash = '', content_hash = '', open_questions_json = '[]', omissions_json = '[]', redacted_at_ms = ${now} where id in (${affected})`,
     );
     await tx.execute(
+      sql`delete from content_source_url_captures where source_id in (select id from content_sources where created_by_user_id = ${user.id})`,
+    );
+    await tx.execute(
       sql`delete from content_source_audit_references where source_id in (select id from content_sources where created_by_user_id = ${user.id})`,
     );
     await tx.execute(
@@ -216,6 +219,12 @@ export async function verifyPostgres(
         ),
       )
     : 0;
+  const unsafeUrlCaptures = content.sourceIds.length
+    ? await db.$count(
+        schema.contentSourceUrlCaptures,
+        inArray(schema.contentSourceUrlCaptures.sourceId, content.sourceIds),
+      )
+    : 0;
   const unsafeRevisions = content.revisionIds.length
     ? await db.$count(
         schema.contentRevisions,
@@ -281,6 +290,7 @@ export async function verifyPostgres(
     : 0;
   if (
     unsafeSources ||
+    unsafeUrlCaptures ||
     unsafeRevisions ||
     unsafeClaims ||
     unsafeExcerpts ||
@@ -296,6 +306,7 @@ export async function verifyPostgres(
     userRows,
     organizationRows,
     unsafeSources,
+    unsafeUrlCaptures,
     unsafeRevisions,
     unsafeClaims,
     unsafeExcerpts,

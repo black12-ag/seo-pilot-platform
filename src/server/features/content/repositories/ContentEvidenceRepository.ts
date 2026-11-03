@@ -10,6 +10,7 @@ import {
   contentRevisionCheckHeads,
   contentMutations,
   contentSourceAuditReferences,
+  contentSourceUrlCaptures,
   contentSources,
   projects,
 } from "@/db/schema";
@@ -36,12 +37,17 @@ async function getSource(
     .select({
       source: contentSources,
       auditReference: contentSourceAuditReferences,
+      urlCapture: contentSourceUrlCaptures,
     })
     .from(contentSources)
     .innerJoin(projects, eq(projects.id, contentSources.projectId))
     .leftJoin(
       contentSourceAuditReferences,
       eq(contentSourceAuditReferences.sourceId, contentSources.id),
+    )
+    .leftJoin(
+      contentSourceUrlCaptures,
+      eq(contentSourceUrlCaptures.sourceId, contentSources.id),
     )
     .where(
       and(
@@ -68,7 +74,7 @@ async function captureSource(
       ? sql`exists (select 1 from audits a where a.id = ${ref.auditId} and a.project_id = ${source.projectId})
       ${ref.pageId === null ? sql`` : sql`and exists (select 1 from audit_pages ap where ap.id = ${ref.pageId} and ap.audit_id = ${ref.auditId})`}
       ${ref.issueId === null ? sql`` : sql`and exists (select 1 from audit_issues ai where ai.id = ${ref.issueId} and ai.audit_id = ${ref.auditId} and ${ref.pageId === null ? sql`ai.page_id is null` : sql`ai.page_id = ${ref.pageId}`})`}`
-      : sql`${source.kind === "pasted" && ref === null ? 1 : 0} = 1`;
+      : sql`${(source.kind === "pasted" || (source.kind === "web" && source.urlCapture != null)) && ref === null ? 1 : 0} = 1`;
   const admitted = sql`exists (select 1 from content_mutations r where r.id = ${receiptId} and r.project_id = ${source.projectId} and r.request_hash = ${requestHash} and r.completed = 0)`;
   await runBatch((tx) => [
     lockProject(tx, source.projectId, scope.actor.organizationId),
@@ -93,10 +99,19 @@ async function captureSource(
             ),
         ]
       : []),
+    ...(source.urlCapture
+      ? [
+          tx
+            .insert(contentSourceUrlCaptures)
+            .select(
+              sql`select ${source.id}, ${source.projectId}, ${source.urlCapture.requestedUrl}, ${source.urlCapture.resolvedUrl}, ${source.urlCapture.httpStatus}, ${source.urlCapture.redirectCount}, ${Number(source.urlCapture.fetchAttempted)}, ${Number(source.urlCapture.responseComplete)}, ${Number(source.urlCapture.textTruncated)}, ${source.urlCapture.extractedBytes} where ${guard} and ${admitted} and exists (select 1 from content_sources s where s.id = ${source.id} and s.mutation_receipt_id = ${receiptId})`,
+            ),
+        ]
+      : []),
     tx
       .update(contentMutations)
       .set({
-        completed: sql`case when ${guard} and exists (select 1 from content_sources s where s.id = ${source.id} and s.project_id = ${source.projectId} and s.mutation_receipt_id = ${receiptId}) ${ref ? sql`and exists (select 1 from content_source_audit_references a where a.source_id = ${source.id} and a.audit_id = ${ref.auditId})` : sql``} then 1 else null end`,
+        completed: sql`case when ${guard} ${source.kind === "web" ? sql`and exists (select 1 from content_source_url_captures u where u.source_id = ${source.id} and u.project_id = ${source.projectId})` : sql``} and exists (select 1 from content_sources s where s.id = ${source.id} and s.project_id = ${source.projectId} and s.mutation_receipt_id = ${receiptId}) ${ref ? sql`and exists (select 1 from content_source_audit_references a where a.source_id = ${source.id} and a.audit_id = ${ref.auditId})` : sql``} then 1 else null end`,
       })
       .where(eq(contentMutations.id, receiptId)),
   ]);
@@ -123,6 +138,32 @@ async function captureSource(
     resultId: receipt.resultId,
     replayed: receipt.id !== receiptId,
   };
+}
+
+async function lookupCapture(
+  scope: ContentWriteScope,
+  projectId: string,
+  mutationId: string,
+) {
+  const [row] = await db
+    .select({ receipt: contentMutations, source: contentSources })
+    .from(contentMutations)
+    .leftJoin(
+      contentSources,
+      and(
+        eq(contentSources.id, contentMutations.resultId),
+        eq(contentSources.projectId, contentMutations.projectId),
+      ),
+    )
+    .where(
+      and(
+        eq(contentMutations.projectId, projectId),
+        eq(contentMutations.mutationId, mutationId),
+        contentWriteGuard(scope, projectId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
 }
 
 async function getAuditObservation(
@@ -210,12 +251,17 @@ async function listSources(
       capturedAtMs: contentSources.capturedAtMs,
       extractionStatus: contentSources.extractionStatus,
       auditSourceId: contentSourceAuditReferences.sourceId,
+      urlSourceId: contentSourceUrlCaptures.sourceId,
     })
     .from(contentSources)
     .innerJoin(projects, eq(projects.id, contentSources.projectId))
     .leftJoin(
       contentSourceAuditReferences,
       eq(contentSourceAuditReferences.sourceId, contentSources.id),
+    )
+    .leftJoin(
+      contentSourceUrlCaptures,
+      eq(contentSourceUrlCaptures.sourceId, contentSources.id),
     )
     .where(
       and(
@@ -228,12 +274,17 @@ async function listSources(
     .orderBy(asc(contentSources.id))
     .limit(limit + 1);
   return contentSourcePageSchema.parse({
-    items: rows.slice(0, limit).map(({ auditSourceId, ...row }) => ({
-      ...row,
-      available:
-        row.extractionStatus !== "erased" &&
-        (row.kind !== "audit" || auditSourceId !== null),
-    })),
+    items: rows
+      .slice(0, limit)
+      .map(({ auditSourceId, urlSourceId, ...row }) => ({
+        ...row,
+        available:
+          row.extractionStatus !== "erased" &&
+          (row.kind !== "audit" || auditSourceId !== null) &&
+          (row.kind !== "web" ||
+            (urlSourceId !== null &&
+              ["usable", "partial"].includes(row.extractionStatus))),
+      })),
     nextCursor: rows.length > limit ? rows[limit - 1].id : null,
   });
 }
@@ -304,6 +355,7 @@ async function getCurrentCheckSet(
 export const ContentEvidenceRepository = {
   getSource,
   captureSource,
+  lookupCapture,
   getAuditObservation,
   listSources,
   getCheckSet,

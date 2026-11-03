@@ -99,6 +99,10 @@ describe.skipIf(testDb.provider !== "postgres")(
           auditReference: null,
         },
       });
+      await testDb.executeMultiple(`
+        UPDATE content_sources SET kind = 'web' WHERE id = 'source';
+        INSERT INTO content_source_url_captures VALUES ('source','project','https://example.com/private','https://example.com/private',200,0,1,1,0,13);
+      `);
       const claim = {
         id: "claim-1",
         target: { kind: "markdown" as const, start: 0, end: 4 },
@@ -244,6 +248,11 @@ describe.skipIf(testDb.provider !== "postgres")(
       ).toMatchObject([
         { source_text: "", attribution: "", extraction_status: "erased" },
       ]);
+      expect(
+        await testDb.execute(
+          "select source_id from content_source_url_captures",
+        ),
+      ).toHaveLength(0);
       expect(
         await testDb.execute("select text from content_claims order by id"),
       ).toMatchObject([{ text: "" }, { text: "" }]);

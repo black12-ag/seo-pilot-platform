@@ -2,7 +2,7 @@ import { sha256Hex } from "@/server/lib/audit/ids";
 import type { SavedContentRevision } from "@/types/schemas/content";
 import type { SavedContentSource } from "@/types/schemas/contentEvidence";
 
-const ruleVersion = "manual-v1";
+const ruleVersion = "manual-v2";
 type Check = {
   claimId: string | null;
   field: string | null;
@@ -63,6 +63,13 @@ export async function createContentCheckSet(
         "stale",
         "warning",
         "A referenced source exceeds the general freshness limit.",
+      );
+    if (source && source.extractionStatus !== "usable")
+      add(
+        "source_coverage",
+        source.extractionStatus === "partial" ? "partial" : "unknown",
+        "warning",
+        "Source extraction is incomplete or unavailable.",
       );
   }
   for (const claim of revision.claims) {

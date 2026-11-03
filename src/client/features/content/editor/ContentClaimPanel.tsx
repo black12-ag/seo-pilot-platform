@@ -173,11 +173,13 @@ export function ContentClaimPanel({
       </p>
       {sources.map((source) => (
         <details key={source.id} className="rounded border p-3 text-sm">
-          <summary className="cursor-pointer">
+          <summary className="cursor-pointer break-all">
             {source.title}
             {source.kind === "audit"
               ? " · typed audit observation (not a page quotation)"
-              : " · attributed text"}
+              : source.kind === "web"
+                ? " · public URL extraction"
+                : " · attributed text"}
           </summary>
           <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words font-sans">
             {source.text}

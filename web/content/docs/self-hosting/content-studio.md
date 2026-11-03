@@ -5,9 +5,8 @@ description: "Create, review and export cited Markdown revisions in SEO Pilot."
 
 SEO Pilot's development branch includes a manual content studio. It is not yet
 a production release.
-Public URL source capture, paid generation and publishing are later parts of the
-planned platform and are unavailable here. The full platform is still in
-development.
+It includes explicit public URL source capture. Paid generation, paid rendering
+checks, publishing and the full platform remain in development.
 
 ## Create a brief and draft
 
@@ -40,6 +39,31 @@ The limits per revision are 10 sources, 200 KB of Markdown (204,800 UTF-8
 bytes), and 100 claims, with up to 10 evidence passages per claim. Each pasted
 or audit source is limited to 100 KB (102,400 UTF-8 bytes). Oversized input is
 refused rather than silently shortened.
+
+## Capture public URLs
+
+In the editor, explicitly capture public HTTP or HTTPS URLs as static page text.
+Capture uses the configured protected transport and needs no model or data provider
+keys. It does not render JavaScript, use a model or provider fallback, or forward
+app or browser cookies or authentication. JavaScript-only pages may return empty
+text. Public-address and project access checks still apply.
+
+A batch accepts up to 5 URLs of 2,048 characters each. Each URL allows up to 3
+redirects (4 GET requests), a 1 MiB response, 100 KiB of extracted UTF-8 text and
+10 seconds; the batch has a 30-second network budget.
+
+Each result is **usable**, **partial**, **empty**, **blocked** or **failed**.
+Only usable and partial results can be attached. Partial sources stay visibly
+partial and checks warn about incomplete coverage even without claims. Review
+all sources and claims with a person. Capture time is distinct from a declared
+publication date; publication date, language and market remain unknown when not
+declared. Select sources and save the revision explicitly.
+
+The exact requested and resolved URLs, including queries, are saved as project
+provenance and are available only with authorized project access. Exports include
+that provenance. A stable per-URL mutation ID replays the immutable saved capture,
+including failures; **New capture** uses a new ID and fetches again. A retry before
+commit can duplicate GET requests, so capture does not promise exactly-once fetches.
 
 ## Review sources and revisions
 
@@ -84,6 +108,7 @@ editing and revision history also work without model keys.
 
 Your installation's authenticated `/mcp` endpoint exposes `list_content`,
 `get_content_revision`, `create_content_brief`, `capture_content_source`,
+`capture_content_urls`,
 `save_content_revision`, `archive_content`, `export_content_revision`,
 `request_content_review` and `get_content_review`. SAM uses the same services
 with its current project. Machine clients can request a review and follow the

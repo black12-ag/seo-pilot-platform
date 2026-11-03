@@ -6,8 +6,10 @@ An open-source foundation for an integrated SEO workspace, derived from
 preserved [MIT license](./LICENSE).
 
 This fork adds an original public landing and project-scoped HTTPS/DNS site
-authority shared by Settings, MCP and SAM. The upstream foundation supplies SEO
-research, audits, ranks, backlinks and AI visibility with configured providers.
+authority shared by Settings, MCP and SAM. Its development branch also includes a
+manual content studio with bounded public URL source capture, human review and
+export. The upstream foundation supplies SEO research, audits, ranks, backlinks
+and AI visibility with configured providers.
 The complete integration of recurring evidence, grounded content and review,
 publishing, automation, reporting and connectors remains in development; this
 repository does not claim the full platform is ready.

@@ -285,7 +285,7 @@ const contentMutationReceiptSchema = z.discriminatedUnion("ok", [
 ]);
 export type ContentWriteScope = z.infer<typeof contentWriteScopeSchema>;
 export type PreparedRevisionWrite = z.infer<typeof preparedRevisionWriteSchema>;
-export type PreparedSourceWrite = z.infer<typeof preparedSourceWriteSchema>;
+export type PreparedSourceWrite = z.input<typeof preparedSourceWriteSchema>;
 export type PreparedArchiveWrite = z.infer<typeof preparedArchiveWriteSchema>;
 export type PreparedReviewRequestWrite = z.infer<
   typeof preparedReviewRequestWriteSchema

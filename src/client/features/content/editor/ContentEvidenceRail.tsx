@@ -73,11 +73,13 @@ export function ContentEvidenceRail({
           <ul className="divide-y">
             {savedSources.map((source) => (
               <li key={source.id} className="space-y-1 py-3 first:pt-0">
-                <p className="font-medium">{source.title}</p>
+                <p className="break-all font-medium">{source.title}</p>
                 <p className="text-muted-foreground">
                   {source.kind === "audit"
                     ? "Audit observation"
-                    : "Attributed text"}{" "}
+                    : source.kind === "web"
+                      ? "Public URL extraction"
+                      : "Attributed text"}{" "}
                   · {source.extractionStatus}
                 </p>
               </li>
@@ -121,7 +123,7 @@ export function ContentEvidenceRail({
               key={source.id}
               className="flex items-center justify-between gap-2 py-2"
             >
-              <span>
+              <span className="min-w-0 break-all">
                 {source.title} · {source.extractionStatus} ·{" "}
                 {new Date(source.capturedAtMs).toLocaleDateString()}
                 {source.available ? "" : " · unavailable"}

@@ -168,3 +168,62 @@ describe("protected recurring schedule restore", () => {
     expect((await handleImport(req)).status).toBe(404);
   });
 });
+
+describe("URL source restore", () => {
+  it("imports exact URL provenance with the source and project foreign keys", async () => {
+    await database.executeMultiple(`
+      INSERT INTO content_mutations VALUES ('receipt','project','mutation','hash','capture','source',1,1);
+      INSERT INTO content_sources (id,project_id,mutation_receipt_id,kind,title,attribution,source_text,text_hash,captured_at_ms,extraction_method,extraction_version,extraction_status) VALUES ('source','project','receipt','web','Title','example.com','Text','hash',1,'public_html_text','public-source-v1','usable');
+    `);
+    const req = new Request("https://local.test/operator/import", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-openseo-operator-secret": operatorSecret,
+      },
+      body: JSON.stringify({
+        command: "rows",
+        table: "content_source_url_captures",
+        columns: [
+          "source_id",
+          "project_id",
+          "requested_url",
+          "resolved_url",
+          "http_status",
+          "redirect_count",
+          "fetch_attempted",
+          "response_complete",
+          "text_truncated",
+          "extracted_bytes",
+        ],
+        rows: [
+          [
+            "source",
+            "project",
+            "https://example.com/?q=private",
+            "https://example.com/final",
+            200,
+            1,
+            1,
+            1,
+            0,
+            4,
+          ],
+        ],
+      }),
+    });
+    expect((await handleImport(req)).status).toBe(200);
+    expect(
+      (
+        await database.execute(
+          "select requested_url,resolved_url from content_source_url_captures",
+        )
+      ).rows,
+    ).toMatchObject([
+      {
+        requested_url: "https://example.com/?q=private",
+        resolved_url: "https://example.com/final",
+      },
+    ]);
+  });
+});

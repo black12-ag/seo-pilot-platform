@@ -91,7 +91,7 @@ describe("OpenSEO's tools on the Every App gateway", () => {
     expect(response.status).toBe(200);
     const catalog = await response.json<ToolsListResponseV1>();
     expect(catalog.warnings ?? []).toEqual([]);
-    expect(catalog.tools).toHaveLength(101);
+    expect(catalog.tools).toHaveLength(102);
     expect(
       catalog.tools
         .filter((tool) =>
@@ -100,6 +100,7 @@ describe("OpenSEO's tools on the Every App gateway", () => {
             "get_content_revision",
             "create_content_brief",
             "capture_content_source",
+            "capture_content_urls",
             "save_content_revision",
             "archive_content",
             "export_content_revision",
@@ -111,6 +112,7 @@ describe("OpenSEO's tools on the Every App gateway", () => {
     ).toEqual([
       { name: "archive_content", risk: "write" },
       { name: "capture_content_source", risk: "write" },
+      { name: "capture_content_urls", risk: "write" },
       { name: "create_content_brief", risk: "write" },
       { name: "export_content_revision", risk: "read" },
       { name: "get_content_review", risk: "read" },
