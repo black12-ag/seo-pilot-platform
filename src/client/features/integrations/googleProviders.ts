@@ -19,8 +19,7 @@ import {
   listGscSites,
   setGscSite,
 } from "@/serverFunctions/gsc";
-import { GA4_SELF_HOSTED_SETUP_DOCS_URL } from "@/shared/ga4";
-import { GSC_SELF_HOSTED_SETUP_DOCS_URL } from "@/shared/gsc";
+import { HELP_PATHS } from "@/shared/product-help";
 
 export type GoogleProvider = "gsc" | "ga4";
 
@@ -109,7 +108,7 @@ export const googleProviders: Record<GoogleProvider, ProviderConfig> = {
     title: "Google Search Console",
     name: "Search Console",
     Logo: GoogleSearchConsoleLogo,
-    docsUrl: GSC_SELF_HOSTED_SETUP_DOCS_URL,
+    docsUrl: HELP_PATHS.searchConsole,
     getConnection: async (projectId) => {
       const connection = await getGscConnection({ data: { projectId } });
       return {
@@ -148,7 +147,7 @@ export const googleProviders: Record<GoogleProvider, ProviderConfig> = {
     title: "Google Analytics",
     name: "Google Analytics",
     Logo: GoogleAnalyticsLogo,
-    docsUrl: GA4_SELF_HOSTED_SETUP_DOCS_URL,
+    docsUrl: HELP_PATHS.googleAnalytics,
     getConnection: async (projectId) => {
       const connection = await getGa4Connection({ data: { projectId } });
       return {

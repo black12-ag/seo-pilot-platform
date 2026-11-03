@@ -1,9 +1,10 @@
+import { HELP_PATHS } from "@/shared/product-help";
 import type { ComponentProps, ReactNode } from "react";
 import { Package } from "lucide-react";
 import { CopyButton } from "@/client/components/CopyButton";
 
 export const AGENT_SETUP_DESCRIPTION =
-  "Paste this prompt into your agent to automatically configure OpenSEO for you.";
+  "Paste this prompt into your agent for instance-specific connection guidance.";
 
 export function AgentSetupPanel({
   prompt,
@@ -28,9 +29,9 @@ export function AgentSetupPanel({
             <Package className="size-5 text-muted-foreground" />
           </span>
           <div>
-            <p className="text-sm font-medium">OpenSEO plugin</p>
+            <p className="text-sm font-medium">SEO Pilot connection</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              MCP connection + SEO skills
+              MCP connection and optional SEO skills
             </p>
           </div>
         </div>
@@ -52,9 +53,7 @@ export function AgentSetupPanel({
       </div>
       <div className="mt-4 text-center">
         <a
-          href="https://openseo.so/docs/agent-setup"
-          target="_blank"
-          rel="noreferrer"
+          href={HELP_PATHS.agent}
           className="text-xs text-muted-foreground underline decoration-muted-foreground/25 underline-offset-4 hover:text-foreground"
         >
           Manual setup

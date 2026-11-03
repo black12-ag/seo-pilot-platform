@@ -1,3 +1,4 @@
+import { HELP_PATHS } from "@/shared/product-help";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertTitle } from "@/client/components/ui/alert";
@@ -257,11 +258,7 @@ function RenderingOptions({
           This deployment has no browser, so rendering needs a Context.dev API
           key. Set <code>CONTEXT_API_KEY</code>, restart OpenSEO, then reload
           this page.{" "}
-          <a
-            href="https://github.com/every-app/open-seo/blob/main/docs/SELF_HOSTING_CLOUDFLARE_OPERATIONS.md#render-javascript-in-site-audits"
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a href={HELP_PATHS.rendering} target="_blank" rel="noreferrer">
             Setup guide
           </a>
         </FieldDescription>

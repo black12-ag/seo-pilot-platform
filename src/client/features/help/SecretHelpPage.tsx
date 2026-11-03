@@ -79,6 +79,30 @@ export function SecretHelpPage({
           </CardContent>
         </Card>
 
+        {!everyApp ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <h2>Apply to your deployment</h2>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p>
+                Docker: an operator adds <code>{secretName}</code> to{" "}
+                <code>deploy/standalone/.env</code>. Use the same existing
+                Compose project, files and overrides to update init without its
+                dependencies. Wait for init to succeed; restart existing web or
+                crawl-gateway only if needed, without recreating dependencies.
+                Keep the runtime, volumes and generated secrets.
+              </p>
+              <CommandBlock command="docker compose up -d --no-deps --force-recreate init" />
+              <p>
+                Local development: add it to <code>.env.local</code> and restart
+                the app. Cloudflare operators can use the instructions below.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
         {everyApp ? (
           <p className="text-sm text-muted-foreground">
             Not an owner or admin? Send this page to one.

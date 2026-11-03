@@ -1,3 +1,4 @@
+import { HELP_PATHS } from "@/shared/product-help";
 import { useEffect, type ReactNode } from "react";
 import { ShieldAlert } from "lucide-react";
 import {
@@ -16,8 +17,7 @@ import {
 import { getClientAuthMode, usesBetterAuthClient } from "@/lib/auth-mode";
 import { getSignInHref, getSignInHrefForLocation } from "@/lib/auth-redirect";
 
-const CLOUDFLARE_SETUP_GUIDE_URL =
-  "https://github.com/every-app/open-seo/blob/main/docs/SELF_HOSTING_CLOUDFLARE.md#2-configure-authentication-and-secrets";
+const CLOUDFLARE_SETUP_GUIDE_URL = HELP_PATHS.authentication;
 
 type CardProps = {
   message: string;
@@ -107,13 +107,7 @@ function AuthConfigErrorCard({ message, onRetry }: CardProps) {
         </Button>
         <Button
           nativeButton={false}
-          render={
-            <a
-              href={CLOUDFLARE_SETUP_GUIDE_URL}
-              target="_blank"
-              rel="noreferrer"
-            />
-          }
+          render={<a href={CLOUDFLARE_SETUP_GUIDE_URL} />}
         >
           Open Setup Guide
         </Button>

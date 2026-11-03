@@ -1,3 +1,4 @@
+import { HELP_PATHS } from "@/shared/product-help";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QueryState } from "@/client/components/QueryState";
 import { Trash2 } from "lucide-react";
@@ -145,9 +146,7 @@ export function ApiKeySettings() {
           <p className="mt-1 text-sm">
             <a
               className="text-primary underline-offset-4 hover:underline"
-              href="https://openseo.so/docs/mcp"
-              target="_blank"
-              rel="noreferrer"
+              href={HELP_PATHS.agent}
             >
               Setup guide
             </a>

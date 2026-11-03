@@ -37,8 +37,9 @@ function DataforseoApiKeyHelpPage() {
       title="Set up your DataForSEO API key"
       intro={
         <>
-          OpenSEO needs the <code>DATAFORSEO_API_KEY</code> secret before
-          keyword, domain, and SEO data workflows can run.
+          DataForSEO is optional. Keyword, domain, backlink and rank data
+          require the <code>DATAFORSEO_API_KEY</code> secret; provider charges
+          may apply.
         </>
       }
       everyAppIntro="OpenSEO's keyword, domain, backlink and rank data comes from DataForSEO. On Every App the gateway holds the key once, for every app."

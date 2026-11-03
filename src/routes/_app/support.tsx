@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CopyButton } from "@/client/components/CopyButton";
 import { PageHeader } from "@/client/components/PageHeader";
 import {
   Card,
@@ -8,10 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/client/components/ui/card";
-import { SUPPORT_EMAIL } from "@/client/lib/support";
-
-const DISCORD_URL = "https://discord.gg/c9uGs3cFXr";
-const GITHUB_URL = "https://github.com/every-app/open-seo";
+import { HELP_PATHS, PRODUCT_REPOSITORY_URL } from "@/shared/product-help";
 
 export const Route = createFileRoute("/_app/support")({
   component: SupportPage,
@@ -23,43 +19,24 @@ function SupportPage() {
       <div className="mx-auto max-w-7xl space-y-8">
         <div className="space-y-1">
           <p className="text-sm font-medium text-muted-foreground">
-            Help & Community
+            Help & Support
           </p>
           <PageHeader
             title="We want to hear from you"
-            description="We want to talk to you! We're super open to feedback and want to learn how you work so we can make OpenSEO better."
+            description="Find setup guidance or report a problem with SEO Pilot."
           />
         </div>
 
         <div className="space-y-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <h2>Email</h2>
-              </CardTitle>
-              <CardDescription>
-                Send ideas, problems, questions, or feedback directly.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CopyButton
-                value={SUPPORT_EMAIL}
-                label={SUPPORT_EMAIL}
-                successMessage="Email copied to clipboard"
-                size="sm"
-              />
-            </CardContent>
-          </Card>
-
           <SupportLinkCard
-            href={DISCORD_URL}
-            title="Discord"
-            description="Ask for help, share ideas and learn from the community."
-            cta="Join the Discord"
+            href={HELP_PATHS.home}
+            title="Setup and help"
+            description="Find setup instructions and troubleshooting guides."
+            cta="Open help"
           />
 
           <SupportLinkCard
-            href={`${GITHUB_URL}/issues`}
+            href={`${PRODUCT_REPOSITORY_URL}/issues`}
             title="GitHub Issues"
             description="Report bugs or request features on GitHub."
             cta="Open an issue"
@@ -82,7 +59,7 @@ function SupportLinkCard({
   cta: string;
 }) {
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="group block">
+    <a href={href} className="group block">
       <Card className="transition-colors group-hover:border-foreground/20">
         <CardHeader>
           <CardTitle>

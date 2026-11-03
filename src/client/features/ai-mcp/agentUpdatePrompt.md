@@ -1,9 +1,5 @@
-Update my installed OpenSEO skills using https://openseo.so/docs/agent-setup#update-your-skills.
+Help me update the public SEO skills for my agent. The setup guide for my instance is {{origin}}/help/agent and the public skill files are at {{repository}}/tree/test/plugins/openseo/skills.
 
-If this is ChatGPT on the web or a regular desktop chat, use https://openseo.so/docs/chatgpt#update-openseo. For the OpenSEO plugin, start a new chat to load the latest tools and skills; reconnect only if sign-in needs attention. For a custom MCP connection, select Refresh in its details, then start a new chat. Refreshing a custom connection updates tools, not skill files. Do not run local Codex commands to update ChatGPT web.
+Identify this client and how the skills were installed. Use its supported update flow or explain how to update the public skill folders and their supporting files manually. Preserve my MCP endpoint, sign-in, other integrations, and personal skill edits; ask before replacing conflicting edits. Do not install internal repository skills or assume a hosted plugin connects to my instance.
 
-Identify this agent and how OpenSEO was installed. Use the matching plugin or skills installer, checking the installed client's help before running commands. Update only OpenSEO in its existing scope. Preserve my MCP endpoint, sign-in, and personal skill edits; ask before replacing conflicting edits. Avoid duplicate skills and do not install internal repository skills.
-
-If the skills were copied manually, compare them with https://github.com/every-app/open-seo/tree/main/plugins/openseo/skills and update the installed public skill folders, including their supporting files. For Grok Bot or another agent without a verified update command, use its supported skill management flow or give me the exact manual steps available in this version.
-
-Reload skills if supported. If I need to reload or start a new session, tell me what to do. Verify the updated skill files and that this agent can discover them; an active MCP connection alone does not prove the skills updated. Briefly tell me what changed and anything left to do. Do not run SEO research during the update.
+Reload skills if the client requires it. Verify skill discovery separately from the MCP connection, report what changed and any remaining steps, and do not run paid research during the update.

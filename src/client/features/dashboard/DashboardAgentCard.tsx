@@ -17,28 +17,18 @@ export function DashboardAgentCard({ projectId }: { projectId: string }) {
   return (
     <AgentCard
       projectId={projectId}
-      icons={ONE_CLICK_INSTALLS.map(({ Icon }) => Icon)}
-      title="Use OpenSEO in ChatGPT or Claude"
-      description="Research keywords and audit your site from the chatbot you already use."
+      icons={[Bot]}
+      title="Connect your agent"
+      description="Connect an MCP client to this instance to use its tools."
     >
-      {ONE_CLICK_INSTALLS.map(({ agent, name, href, Icon }) => (
-        <Button
-          key={agent}
-          variant="outline"
-          className={actionClassName}
-          nativeButton={false}
-          render={<a href={href} target="_blank" rel="noreferrer" />}
-          onClick={() =>
-            captureClientEvent("onboarding:add_to_agent_click", {
-              agent,
-              source: "dashboard",
-            })
-          }
-        >
-          <Icon data-icon="inline-start" />
-          Add to {name}
-        </Button>
-      ))}
+      <Button
+        variant="outline"
+        className={actionClassName}
+        nativeButton={false}
+        render={<a href="/ai" />}
+      >
+        Agent setup
+      </Button>
     </AgentCard>
   );
 }

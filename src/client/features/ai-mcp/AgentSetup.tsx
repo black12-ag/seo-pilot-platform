@@ -2,7 +2,6 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check } from "lucide-react";
 import { AgentList } from "./AgentList";
-import { ONE_CLICK_INSTALLS } from "./agentInstalls";
 import { AgentSetupPanel, AGENT_SETUP_DESCRIPTION } from "./AgentSetupPanel";
 import { getAgentSetupPrompt } from "./agentSetupPrompt";
 import { captureClientEvent } from "@/client/lib/posthog";
@@ -60,27 +59,6 @@ export function AgentSetup({
           setStartedSetup(true);
           captureClientEvent("onboarding:setup_prompt_copy");
         }}
-        actions={ONE_CLICK_INSTALLS.map(({ agent, name, href, Icon }) => (
-          <Button
-            key={agent}
-            variant="outline"
-            size="lg"
-            className="w-full"
-            nativeButton={false}
-            render={<a href={href} target="_blank" rel="noreferrer" />}
-            onClick={() => {
-              setStartedSetup(true);
-              captureClientEvent("onboarding:add_to_agent_click", { agent });
-            }}
-          >
-            <Icon data-icon="inline-start" />
-            {/* "Add to" drops on narrow screens so both buttons fit one row. */}
-            <span>
-              <span className="max-sm:sr-only">Add to </span>
-              {name}
-            </span>
-          </Button>
-        ))}
       >
         {connected ? (
           <p

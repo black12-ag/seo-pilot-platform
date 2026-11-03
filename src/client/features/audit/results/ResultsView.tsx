@@ -1,3 +1,4 @@
+import { HELP_PATHS } from "@/shared/product-help";
 import { MetricsTable } from "@/client/components/MetricsTable";
 import { useMemo, type ReactNode } from "react";
 import { ShieldAlert } from "lucide-react";
@@ -133,9 +134,7 @@ export function ResultsView({
             to allow the{" "}
             <a
               className="underline underline-offset-4"
-              href="https://openseo.so/docs/crawler"
-              target="_blank"
-              rel="noreferrer"
+              href={HELP_PATHS.crawler}
             >
               OpenSEO-Audit crawler
             </a>

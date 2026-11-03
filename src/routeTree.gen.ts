@@ -34,8 +34,11 @@ import { Route as AcceptInvitationIdRouteImport } from './routes/accept-invitati
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiPrivacyRegionRouteImport } from './routes/api/privacy-region'
 import { Route as ApiSignUpStatusRouteImport } from './routes/api/sign-up-status'
+import { Route as HelpAuthenticationRouteImport } from './routes/help.authentication'
 import { Route as RReportIdRouteImport } from './routes/r/$reportId'
 import { Route as AppBillingFixPaymentRouteImport } from './routes/_app/billing_.fix-payment'
+import { Route as AppHelpIndexRouteImport } from './routes/_app/help/index'
+import { Route as AppHelpTopicRouteImport } from './routes/_app/help/$topic'
 import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/dataforseo-api-key'
 import { Route as AppHelpOpenrouterApiKeyRouteImport } from './routes/_app/help/openrouter-api-key'
 import { Route as AppPProjectIdRouteRouteImport } from './routes/_app/p/$projectId/route'
@@ -211,6 +214,11 @@ const ApiSignUpStatusRoute = ApiSignUpStatusRouteImport.update({
   path: '/api/sign-up-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HelpAuthenticationRoute = HelpAuthenticationRouteImport.update({
+  id: '/help/authentication',
+  path: '/help/authentication',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RReportIdRoute = RReportIdRouteImport.update({
   id: '/r/$reportId',
   path: '/r/$reportId',
@@ -219,6 +227,16 @@ const RReportIdRoute = RReportIdRouteImport.update({
 const AppBillingFixPaymentRoute = AppBillingFixPaymentRouteImport.update({
   id: '/billing_/fix-payment',
   path: '/billing/fix-payment',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppHelpIndexRoute = AppHelpIndexRouteImport.update({
+  id: '/help/',
+  path: '/help/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppHelpTopicRoute = AppHelpTopicRouteImport.update({
+  id: '/help/$topic',
+  path: '/help/$topic',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppHelpDataforseoApiKeyRoute = AppHelpDataforseoApiKeyRouteImport.update({
@@ -515,9 +533,11 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/api/privacy-region': typeof ApiPrivacyRegionRoute
   '/api/sign-up-status': typeof ApiSignUpStatusRoute
+  '/help/authentication': typeof HelpAuthenticationRoute
   '/r/$reportId': typeof RReportIdRoute
   '/p/$projectId': typeof AppPProjectIdRouteRouteWithChildren
   '/billing/fix-payment': typeof AppBillingFixPaymentRoute
+  '/help/$topic': typeof AppHelpTopicRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
@@ -526,6 +546,7 @@ export interface FileRoutesByFullPath {
   '/report-map/$grant/copyright': typeof ReportMapGrantCopyrightRoute
   '/s/$token/og.png': typeof STokenOgDotpngRoute
   '/s/$token/raw': typeof STokenRawRoute
+  '/help/': typeof AppHelpIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/s/$token/': typeof STokenIndexRoute
@@ -589,8 +610,10 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/api/privacy-region': typeof ApiPrivacyRegionRoute
   '/api/sign-up-status': typeof ApiSignUpStatusRoute
+  '/help/authentication': typeof HelpAuthenticationRoute
   '/r/$reportId': typeof RReportIdRoute
   '/billing/fix-payment': typeof AppBillingFixPaymentRoute
+  '/help/$topic': typeof AppHelpTopicRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
@@ -599,6 +622,7 @@ export interface FileRoutesByTo {
   '/report-map/$grant/copyright': typeof ReportMapGrantCopyrightRoute
   '/s/$token/og.png': typeof STokenOgDotpngRoute
   '/s/$token/raw': typeof STokenRawRoute
+  '/help': typeof AppHelpIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
   '/s/$token': typeof STokenIndexRoute
@@ -662,10 +686,12 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/api/privacy-region': typeof ApiPrivacyRegionRoute
   '/api/sign-up-status': typeof ApiSignUpStatusRoute
+  '/help/authentication': typeof HelpAuthenticationRoute
   '/r/$reportId': typeof RReportIdRoute
   '/_app/': typeof AppIndexRoute
   '/_app/p/$projectId': typeof AppPProjectIdRouteRouteWithChildren
   '/_app/billing_/fix-payment': typeof AppBillingFixPaymentRoute
+  '/_app/help/$topic': typeof AppHelpTopicRoute
   '/_app/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/_app/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/_app/settings/organization': typeof AppSettingsOrganizationRoute
@@ -674,6 +700,7 @@ export interface FileRoutesById {
   '/report-map/$grant/copyright': typeof ReportMapGrantCopyrightRoute
   '/s/$token/og.png': typeof STokenOgDotpngRoute
   '/s/$token/raw': typeof STokenRawRoute
+  '/_app/help/': typeof AppHelpIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/s/$token/': typeof STokenIndexRoute
@@ -740,9 +767,11 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/privacy-region'
     | '/api/sign-up-status'
+    | '/help/authentication'
     | '/r/$reportId'
     | '/p/$projectId'
     | '/billing/fix-payment'
+    | '/help/$topic'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
     | '/settings/organization'
@@ -751,6 +780,7 @@ export interface FileRouteTypes {
     | '/report-map/$grant/copyright'
     | '/s/$token/og.png'
     | '/s/$token/raw'
+    | '/help/'
     | '/settings/'
     | '/onboarding/'
     | '/s/$token/'
@@ -814,8 +844,10 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/privacy-region'
     | '/api/sign-up-status'
+    | '/help/authentication'
     | '/r/$reportId'
     | '/billing/fix-payment'
+    | '/help/$topic'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
     | '/settings/organization'
@@ -824,6 +856,7 @@ export interface FileRouteTypes {
     | '/report-map/$grant/copyright'
     | '/s/$token/og.png'
     | '/s/$token/raw'
+    | '/help'
     | '/settings'
     | '/onboarding'
     | '/s/$token'
@@ -886,10 +919,12 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/privacy-region'
     | '/api/sign-up-status'
+    | '/help/authentication'
     | '/r/$reportId'
     | '/_app/'
     | '/_app/p/$projectId'
     | '/_app/billing_/fix-payment'
+    | '/_app/help/$topic'
     | '/_app/help/dataforseo-api-key'
     | '/_app/help/openrouter-api-key'
     | '/_app/settings/organization'
@@ -898,6 +933,7 @@ export interface FileRouteTypes {
     | '/report-map/$grant/copyright'
     | '/s/$token/og.png'
     | '/s/$token/raw'
+    | '/_app/help/'
     | '/_app/settings/'
     | '/_authenticated/onboarding/'
     | '/s/$token/'
@@ -955,6 +991,7 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   ApiPrivacyRegionRoute: typeof ApiPrivacyRegionRoute
   ApiSignUpStatusRoute: typeof ApiSignUpStatusRoute
+  HelpAuthenticationRoute: typeof HelpAuthenticationRoute
   RReportIdRoute: typeof RReportIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
@@ -1146,6 +1183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSignUpStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/help/authentication': {
+      id: '/help/authentication'
+      path: '/help/authentication'
+      fullPath: '/help/authentication'
+      preLoaderRoute: typeof HelpAuthenticationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/r/$reportId': {
       id: '/r/$reportId'
       path: '/r/$reportId'
@@ -1158,6 +1202,20 @@ declare module '@tanstack/react-router' {
       path: '/billing/fix-payment'
       fullPath: '/billing/fix-payment'
       preLoaderRoute: typeof AppBillingFixPaymentRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/help/': {
+      id: '/_app/help/'
+      path: '/help'
+      fullPath: '/help/'
+      preLoaderRoute: typeof AppHelpIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/help/$topic': {
+      id: '/_app/help/$topic'
+      path: '/help/$topic'
+      fullPath: '/help/$topic'
+      preLoaderRoute: typeof AppHelpTopicRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/help/dataforseo-api-key': {
@@ -1652,8 +1710,10 @@ interface AppRouteRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppPProjectIdRouteRoute: typeof AppPProjectIdRouteRouteWithChildren
   AppBillingFixPaymentRoute: typeof AppBillingFixPaymentRoute
+  AppHelpTopicRoute: typeof AppHelpTopicRoute
   AppHelpDataforseoApiKeyRoute: typeof AppHelpDataforseoApiKeyRoute
   AppHelpOpenrouterApiKeyRoute: typeof AppHelpOpenrouterApiKeyRoute
+  AppHelpIndexRoute: typeof AppHelpIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
@@ -1665,8 +1725,10 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppPProjectIdRouteRoute: AppPProjectIdRouteRouteWithChildren,
   AppBillingFixPaymentRoute: AppBillingFixPaymentRoute,
+  AppHelpTopicRoute: AppHelpTopicRoute,
   AppHelpDataforseoApiKeyRoute: AppHelpDataforseoApiKeyRoute,
   AppHelpOpenrouterApiKeyRoute: AppHelpOpenrouterApiKeyRoute,
+  AppHelpIndexRoute: AppHelpIndexRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
@@ -1720,6 +1782,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   ApiPrivacyRegionRoute: ApiPrivacyRegionRoute,
   ApiSignUpStatusRoute: ApiSignUpStatusRoute,
+  HelpAuthenticationRoute: HelpAuthenticationRoute,
   RReportIdRoute: RReportIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,

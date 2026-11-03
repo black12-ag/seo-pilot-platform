@@ -4,7 +4,6 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   LegacyDockerBanner,
-  MissingSeoSetupModal,
   SeoApiStatusBanners,
 } from "@/client/layout/AppShellParts";
 import { GscReEngagementModal } from "@/client/features/gsc/GscReEngagementModal";
@@ -32,8 +31,6 @@ export function AuthenticatedAppLayout({
   banner?: React.ReactNode;
 }) {
   const location = useLocation();
-  const [showMissingSeoApiKeyModal, setShowMissingSeoApiKeyModal] =
-    React.useState(false);
   // On non-project pages (e.g. /settings) there's no projectId in the URL, so
   // derive one for the nav/switcher: prefer the last-visited project, else the
   // most recent. The whole app tree is client-only (see root ClientOnly), so we
@@ -79,31 +76,8 @@ export function AuthenticatedAppLayout({
   const seoApiKeyStatusError =
     shouldCheckSeoApiKeyStatus && seoApiKeyStatusQuery.isError;
 
-  React.useEffect(() => {
-    if (!shouldCheckSeoApiKeyStatus) {
-      setShowMissingSeoApiKeyModal(false);
-      return;
-    }
-
-    if (seoApiKeyStatusQuery.isError) {
-      setShowMissingSeoApiKeyModal(false);
-      return;
-    }
-
-    if (!seoApiKeyStatusQuery.isSuccess) return;
-    setShowMissingSeoApiKeyModal(!seoApiKeyStatusQuery.data.configured);
-  }, [
-    location.pathname,
-    seoApiKeyStatusQuery.data,
-    seoApiKeyStatusQuery.isError,
-    seoApiKeyStatusQuery.isSuccess,
-    shouldCheckSeoApiKeyStatus,
-  ]);
-
   const shouldShowSeoApiWarning =
-    !seoApiKeyStatusError &&
-    isSeoApiKeyConfigured === false &&
-    !showMissingSeoApiKeyModal;
+    !seoApiKeyStatusError && isSeoApiKeyConfigured === false;
 
   return (
     <SidebarProvider className="h-[100dvh] min-h-0 overflow-hidden">
@@ -123,17 +97,8 @@ export function AuthenticatedAppLayout({
         <div className="min-h-0 flex-1 overflow-auto">{children}</div>
       </SidebarInset>
 
-      {showMissingSeoApiKeyModal ? (
-        <MissingSeoSetupModal
-          onClose={() => setShowMissingSeoApiKeyModal(false)}
-        />
-      ) : null}
-
       {ready ? (
-        <GscReEngagementModal
-          projectId={sidebarProjectId}
-          suppressed={showMissingSeoApiKeyModal}
-        />
+        <GscReEngagementModal projectId={sidebarProjectId} suppressed={false} />
       ) : null}
     </SidebarProvider>
   );
@@ -144,7 +109,7 @@ function MobileTopBar() {
     <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card px-2 py-1.5 md:hidden">
       <SidebarTrigger aria-label="Toggle sidebar" />
       <Link to="/" className="ml-1 font-semibold text-foreground">
-        OpenSEO
+        SEO Pilot
       </Link>
     </div>
   );

@@ -54,14 +54,15 @@ export function GoogleOAuthSetupWarning({
       <AlertTitle>Google OAuth client not configured</AlertTitle>
       <AlertDescription>
         <p>
-          Add your Google client ID and secret to this OpenSEO deployment before
-          connecting {integrationName}.
+          {integrationName} is unavailable until an administrator configures
+          Google OAuth for this deployment.
         </p>
-        <SafeExternalLink
-          url={docsUrl}
-          label="Open setup guide"
+        <a
+          href={docsUrl}
           className="inline-flex items-center gap-1 font-medium underline underline-offset-2"
-        />
+        >
+          Open setup guide
+        </a>
       </AlertDescription>
     </Alert>
   );

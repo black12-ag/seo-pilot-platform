@@ -1,18 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { AlertTriangle, ExternalLink, Info } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import { AppBanner } from "@/client/layout/AppBanner";
 import { dataforseoHelpLinkOptions } from "@/client/navigation/items";
 import { isEveryAppClientAuthMode } from "@/lib/auth-mode";
-import { Button } from "@/client/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/client/components/ui/dialog";
 
 function SeoApiStatusBanners({
   shouldShowSeoApiWarning,
@@ -43,8 +34,9 @@ function SeoApiStatusBanners({
             </>
           ) : (
             <>
-              Setup needed: add your DataForSEO API key to use OpenSEO features.
-              See the quick steps on the {helpLink}.
+              DataForSEO is not configured. Keyword, domain, backlink and rank
+              data features are unavailable until an administrator sets it up.
+              See the {helpLink}.
             </>
           )}
         </AppBanner>
@@ -60,8 +52,7 @@ function SeoApiStatusBanners({
   );
 }
 
-const DOCKER_MOVE_URL =
-  "https://github.com/every-app/open-seo/blob/main/docs/SELF_HOSTING_DOCKER.md#move-from-the-old-docker-image";
+const DOCKER_MOVE_URL = "/help/docker-migration";
 const DOCKER_MOVE_DISMISSED_KEY = "openseo:docker-move-dismissed";
 
 // The old single-container Docker image builds the app at startup with this
@@ -79,8 +70,6 @@ function LegacyDockerBanner() {
       image keeps getting updates, and moving keeps your data.{" "}
       <a
         href={DOCKER_MOVE_URL}
-        target="_blank"
-        rel="noreferrer"
         className="font-medium text-primary underline-offset-4 hover:underline"
       >
         How to move
@@ -100,51 +89,4 @@ function LegacyDockerBanner() {
   );
 }
 
-function MissingSeoSetupModal({ onClose }: { onClose: () => void }) {
-  const everyApp = isEveryAppClientAuthMode();
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader className="flex-row items-start gap-3 text-left">
-          <div className="rounded-full bg-warning/20 p-2 text-warning">
-            <AlertTriangle className="size-5" />
-          </div>
-          <div className="space-y-2">
-            <DialogTitle>
-              {everyApp
-                ? "DataForSEO isn't set up yet"
-                : "One quick setup step"}
-            </DialogTitle>
-            <DialogDescription>
-              {everyApp ? (
-                <>
-                  Keyword, domain, backlink and rank data comes from DataForSEO
-                  through your Every App gateway. An owner or admin sets it once
-                  for every app with{" "}
-                  <code>pnpm everyapp secret set DATAFORSEO_API_KEY</code>; the
-                  setup guide has the steps.
-                </>
-              ) : (
-                "Add your DataForSEO API key to start using OpenSEO."
-              )}
-            </DialogDescription>
-          </div>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Dismiss
-          </Button>
-          <Button
-            nativeButton={false}
-            render={<Link {...dataforseoHelpLinkOptions} onClick={onClose} />}
-          >
-            Open setup guide
-            <ExternalLink className="size-4" />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-export { LegacyDockerBanner, MissingSeoSetupModal, SeoApiStatusBanners };
+export { LegacyDockerBanner, SeoApiStatusBanners };

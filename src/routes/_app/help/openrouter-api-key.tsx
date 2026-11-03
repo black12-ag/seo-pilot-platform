@@ -57,19 +57,9 @@ function OpenrouterApiKeyHelpPage() {
           {accountStep}
           {keyStep}
           <li>
-            Save the key as the <code>OPENROUTER_API_KEY</code> secret in your
-            environment:
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>
-                Docker self-hosting: <code>.env</code>
-              </li>
-              <li>Cloudflare: set it in the Workers UI (see below)</li>
-              <li>
-                Local development: <code>.env.local</code>
-              </li>
-            </ul>
+            Give the key to your deployment operator to configure using the
+            applicable instructions below.
           </li>
-          <li>Restart OpenSEO.</li>
         </>
       }
       everyAppSteps={

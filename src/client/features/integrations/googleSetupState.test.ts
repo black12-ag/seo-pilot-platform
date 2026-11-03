@@ -42,7 +42,9 @@ function renderSetup(
   {
     connectionError,
     accounts,
+    configured = true,
   }: {
+    configured?: boolean;
     connectionError?: "initial" | "refetch";
     accounts?: GooglePickerAccount[];
   } = {},
@@ -56,7 +58,7 @@ function renderSetup(
     connected,
     currentUserHasGrant: hasGrant,
     canManage,
-    googleOAuthConfigured: true,
+    googleOAuthConfigured: configured,
     property: "https://example.com/",
   });
   if (accounts) {
@@ -166,7 +168,7 @@ describe("Search Console website setup guidance", () => {
       expect(html).toContain("We couldn’t find your website");
       expect(html).toContain("owner@example.com");
       expect(html).not.toContain("Choose property");
-      expect(html).toContain("/blogs/google-search-console-setup");
+      expect(html).toContain("/help/google-search-console");
       expect(html).toContain("Refresh");
       expect(html).toContain("Use a different Google account");
       if (surface === "onboarding") expect(html).toContain("Skip for now");
@@ -192,3 +194,29 @@ describe("Search Console website setup guidance", () => {
     },
   );
 });
+
+it.each(["gsc", "ga4"] as const)(
+  "shows the local guide when %s OAuth is unavailable",
+  (surface) => {
+    const html = renderSetup(surface, false, false, true, {
+      configured: false,
+    });
+    expect(html).toContain(
+      surface === "gsc"
+        ? "/help/google-search-console"
+        : "/help/google-analytics",
+    );
+    expect(html).toContain("administrator");
+  },
+);
+
+it.each(["gsc", "ga4"] as const)(
+  "does not claim missing configuration when the %s check fails",
+  (surface) => {
+    const html = renderSetup(surface, false, false, true, {
+      connectionError: "initial",
+    });
+    expect(html).toContain("Try again");
+    expect(html).not.toContain("Google OAuth client not configured");
+  },
+);

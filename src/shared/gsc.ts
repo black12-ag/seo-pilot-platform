@@ -14,4 +14,4 @@ export const GSC_OAUTH_SCOPES = [
 ] as const;
 
 export const GSC_SELF_HOSTED_SETUP_DOCS_URL =
-  "https://github.com/every-app/open-seo/blob/main/docs/SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md";
+  "https://github.com/black12-ag/seo-pilot-platform/blob/test/docs/SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md";

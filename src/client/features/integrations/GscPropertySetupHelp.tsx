@@ -1,3 +1,4 @@
+import { HELP_PATHS } from "@/shared/product-help";
 import { Button } from "@/client/components/ui/button";
 import type { GooglePickerAccount } from "./GooglePropertyPicker";
 
@@ -48,9 +49,7 @@ export function GscPropertySetupHelp({
             Open Search Console ↗
           </a>
           <a
-            href="https://openseo.so/blogs/google-search-console-setup"
-            target="_blank"
-            rel="noopener noreferrer"
+            href={HELP_PATHS.searchConsole}
             className="underline underline-offset-4"
           >
             Setup guide

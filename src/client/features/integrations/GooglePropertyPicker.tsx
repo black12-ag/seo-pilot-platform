@@ -14,12 +14,11 @@ import {
   ComboboxLabel,
   ComboboxList,
 } from "@/client/components/ui/combobox";
-import { GSC_SELF_HOSTED_SETUP_DOCS_URL } from "@/shared/gsc";
+import { HELP_PATHS } from "@/shared/product-help";
 import { useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 
-const GSC_SETUP_GUIDE_URL =
-  "https://openseo.so/blogs/google-search-console-setup";
+const GSC_SETUP_GUIDE_URL = HELP_PATHS.searchConsole;
 
 export type GooglePickerSelection = { accountId: string; propertyId: string };
 type Property = {
@@ -267,9 +266,7 @@ export function GooglePropertyPicker({
                       <>
                         {" "}
                         <a
-                          href={`${GSC_SELF_HOSTED_SETUP_DOCS_URL}#troubleshooting`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          href={`${HELP_PATHS.searchConsole}#troubleshooting`}
                           className="underline underline-offset-4"
                         >
                           How to enable it ↗
@@ -334,8 +331,6 @@ export function GooglePropertyPicker({
                 Having trouble?{" "}
                 <a
                   href={GSC_SETUP_GUIDE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="underline underline-offset-4"
                 >
                   Setup guide ↗

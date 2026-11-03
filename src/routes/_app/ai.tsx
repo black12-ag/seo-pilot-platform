@@ -1,3 +1,4 @@
+import { HELP_PATHS, PRODUCT_REPOSITORY_URL } from "@/shared/product-help";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { everyAppAccountQueryOptions } from "@/client/features/every-app/everyAppAccountQueries";
@@ -22,15 +23,15 @@ import { ArrowUpRight, ShieldAlert } from "lucide-react";
 import { getClientAuthMode } from "@/lib/auth-mode";
 import { captureClientEvent } from "@/client/lib/posthog";
 import {
-  agentUpdatePrompt,
+  getAgentUpdatePrompt,
   getAgentSetupPrompt,
 } from "@/client/features/ai-mcp/agentSetupPrompt";
 import { CopyButton } from "@/client/components/CopyButton";
 import { AgentList } from "@/client/features/ai-mcp/AgentList";
 
-const DOCS_URL = "https://openseo.so/docs/agent-setup";
+const DOCS_URL = HELP_PATHS.agent;
 
-const COACH_DOCS_URL = "https://openseo.so/docs/skills/seo-coach";
+const COACH_DOCS_URL = `${PRODUCT_REPOSITORY_URL}/blob/test/plugins/openseo/skills/seo-coach/SKILL.md`;
 const LINK_CLASS =
   "text-foreground underline decoration-foreground/25 underline-offset-4 hover:decoration-foreground";
 const MUTED_LINK_CLASS =
@@ -118,9 +119,8 @@ function AiPage() {
                         <h2>Set up your agent</h2>
                       </CardTitle>
                       <CardDescription>
-                        Paste the setup prompt into your agent to connect
-                        OpenSEO and install its SEO skills. It will guide you
-                        through any manual steps.
+                        Paste the setup prompt into your agent for connection
+                        and skill installation instructions.
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -136,12 +136,7 @@ function AiPage() {
                             captureClientEvent("mcp:setup_prompt_copy")
                           }
                         />
-                        <a
-                          href={`${DOCS_URL}#set-up-your-agent`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={MUTED_LINK_CLASS}
-                        >
+                        <a href={DOCS_URL} className={MUTED_LINK_CLASS}>
                           Setup instructions
                           <ArrowUpRight className="size-3.5" />
                         </a>
@@ -170,27 +165,22 @@ function AiPage() {
                       </CardTitle>
                       <CardDescription>
                         Already connected? Paste the update prompt into your
-                        agent to get the latest OpenSEO skills while preserving
-                        your connection settings and personal edits.
+                        agent for update instructions while preserving your
+                        connection settings and personal edits.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-wrap items-center gap-x-5 gap-y-3">
                       <CopyButton
                         variant="default"
                         size="lg"
-                        value={agentUpdatePrompt}
+                        value={getAgentUpdatePrompt(origin)}
                         label="Copy update prompt"
                         successMessage="Update prompt copied"
                         onCopy={() =>
                           captureClientEvent("mcp:update_prompt_copy")
                         }
                       />
-                      <a
-                        href={`${DOCS_URL}#update-your-skills`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={MUTED_LINK_CLASS}
-                      >
+                      <a href={DOCS_URL} className={MUTED_LINK_CLASS}>
                         Update instructions
                         <ArrowUpRight className="size-3.5" />
                       </a>
@@ -206,9 +196,7 @@ function AiPage() {
                       cannot connect until Managed OAuth is enabled on your
                       Access application.{" "}
                       <a
-                        href="https://openseo.so/docs/self-hosting/cloudflare#connect-the-mcp-server-through-cloudflare-access"
-                        target="_blank"
-                        rel="noreferrer"
+                        href={HELP_PATHS.authentication}
                         className="font-medium"
                       >
                         Setup guide
@@ -238,7 +226,7 @@ function AiPage() {
               <p className="text-sm text-muted-foreground">
                 {everyApp
                   ? "Install them with npx skills add every-app/open-seo."
-                  : "The setup prompt installs these."}{" "}
+                  : "Use the setup guide to connect your agent and install available skills."}{" "}
                 Run one by name when you want a full report instead of a quick
                 answer.
               </p>
@@ -249,7 +237,7 @@ function AiPage() {
                     className="flex flex-col gap-0.5 sm:flex-row sm:gap-3"
                   >
                     <a
-                      href={`https://openseo.so/docs/skills/${name}`}
+                      href={`${PRODUCT_REPOSITORY_URL}/blob/test/plugins/openseo/skills/${name}/SKILL.md`}
                       target="_blank"
                       rel="noreferrer"
                       className={`shrink-0 font-mono text-[13px] sm:w-48 ${LINK_CLASS}`}

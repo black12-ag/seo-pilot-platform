@@ -1,0 +1,207 @@
+import { CopyButton } from "@/client/components/CopyButton";
+import { PageHeader } from "@/client/components/PageHeader";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/client/components/ui/card";
+import { isEveryAppClientAuthMode } from "@/lib/auth-mode";
+import { HELP_PATHS } from "@/shared/product-help";
+import { guideContent } from "./OtherHelpGuides";
+
+const topics = [
+  ["Google Analytics", HELP_PATHS.googleAnalytics, "Connect a GA4 property."],
+  [
+    "Google Search Console",
+    HELP_PATHS.searchConsole,
+    "Connect and verify your website.",
+  ],
+  [
+    "DataForSEO",
+    HELP_PATHS.dataforseo,
+    "Enable keyword, domain, backlink and rank data.",
+  ],
+  ["OpenRouter", HELP_PATHS.openrouter, "Enable SAM and AI research."],
+  ["AI agents", HELP_PATHS.agent, "Connect an agent to this installation."],
+  ["Crawler", HELP_PATHS.crawler, "Understand audit access and crawl limits."],
+  [
+    "JavaScript rendering",
+    HELP_PATHS.rendering,
+    "Enable rendered page audits.",
+  ],
+  [
+    "Authentication",
+    HELP_PATHS.authentication,
+    "Check deployment sign-in settings.",
+  ],
+  [
+    "Docker migration",
+    HELP_PATHS.dockerMigration,
+    "Move from the old Docker image.",
+  ],
+  [
+    "Rank tracking",
+    HELP_PATHS.rankTracking,
+    "Understand tracked ranking changes.",
+  ],
+] as const;
+
+const link = "font-medium text-primary underline underline-offset-4";
+
+export function HelpHub() {
+  return (
+    <HelpLayout
+      title="Help and setup"
+      description="Guides for optional integrations and your installation."
+    >
+      <div className="grid gap-3 md:grid-cols-2">
+        {topics.map(([title, href, description]) => (
+          <Card key={href}>
+            <CardHeader>
+              <CardTitle>
+                <a className={link} href={href}>
+                  {title}
+                </a>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              {description}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </HelpLayout>
+  );
+}
+
+function HelpLayout({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="h-full overflow-auto px-4 py-4 pb-24 md:px-6 md:py-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <a className={link} href={HELP_PATHS.home}>
+          Help home
+        </a>
+        <PageHeader title={title} description={description} />
+        <div className="space-y-4 text-sm leading-6">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function GoogleGuide({ analytics }: { analytics: boolean }) {
+  const everyApp = isEveryAppClientAuthMode();
+  const callback =
+    typeof window === "undefined"
+      ? ""
+      : `${window.location.origin}/api/${analytics ? "ga4" : "gsc"}/oauth/callback`;
+  return (
+    <HelpLayout
+      title={
+        analytics ? "Connect Google Analytics" : "Connect Google Search Console"
+      }
+      description="An administrator configures Google access; each user grants read-only access to their own account."
+    >
+      {everyApp ? (
+        <p>
+          Every App uses its gateway Google provider. An owner or admin
+          configures the Google client in Manage workspace → Providers and
+          registers{" "}
+          <code>
+            https://&lt;your gateway&gt;/connect/google-workspace/callback
+          </code>
+          . Connect the account from your project integrations afterward.
+        </p>
+      ) : (
+        <>
+          <ol className="list-decimal space-y-3 pl-5">
+            <li>
+              In Google Cloud, configure the OAuth consent screen and create a
+              Web application OAuth client. Add test users if your consent
+              screen is in testing.
+            </li>
+            <li>
+              Enable the{" "}
+              {analytics
+                ? "Google Analytics Data API and Google Analytics Admin API"
+                : "Google Search Console API"}{" "}
+              in that Google Cloud project.
+            </li>
+            <li>
+              Register this authorized redirect URI on the OAuth client:
+              <div className="mt-2 flex items-center gap-2 rounded border p-3">
+                <code className="min-w-0 flex-1 break-all">{callback}</code>
+                <CopyButton
+                  value={callback}
+                  label="Copy callback URL"
+                  successMessage="Callback URL copied"
+                  size="icon-xs"
+                  variant="ghost"
+                />
+              </div>
+            </li>
+            <li>
+              Have the deployment operator set <code>GOOGLE_CLIENT_ID</code> and{" "}
+              <code>GOOGLE_CLIENT_SECRET</code>. If{" "}
+              <code>BETTER_AUTH_SECRET</code> is absent, configure a secret of
+              at least 32 characters. Keep any existing secret unchanged,
+              including one generated by Docker; it protects stored tokens. If
+              an existing secret is too short, ask the operator to diagnose it
+              before making changes; do not automatically rotate it.
+            </li>
+            <li>
+              For Docker, use the existing Compose project, files and overrides.
+              Update <code>deploy/standalone/.env</code>, then run{" "}
+              <code>docker compose up -d --no-deps --force-recreate init</code>{" "}
+              with those same Compose options and wait for init to succeed.
+              Restart existing web or crawl-gateway only if needed, without
+              recreating dependencies. Keep the runtime and volumes. For
+              Cloudflare, update the Worker secrets and deploy the
+              configuration. Local development uses <code>.env.local</code> and
+              a restart.
+            </li>
+          </ol>
+          <p id="troubleshooting">
+            If Google reports an API is disabled, enable the relevant API in the
+            same Cloud project as the OAuth client. Confirm the redirect URI
+            matches exactly and the Google account can access the chosen
+            property.
+          </p>
+        </>
+      )}
+      <p>
+        Return to your project's Integrations page, connect Google, grant the
+        requested read-only access, and choose a property. A connection is only
+        complete after authorization and property selection.
+      </p>
+      <button
+        type="button"
+        className={link}
+        onClick={() => window.history.back()}
+      >
+        Back to previous page
+      </button>
+    </HelpLayout>
+  );
+}
+
+export function HelpTopic({ topic }: { topic: string }) {
+  if (topic === "google-analytics" || topic === "google-search-console")
+    return <GoogleGuide analytics={topic === "google-analytics"} />;
+  const guide = guideContent[topic];
+  if (!guide)
+    return (
+      <HelpLayout title="Guide not found">
+        <p>Choose a topic from the help home.</p>
+      </HelpLayout>
+    );
+  return <HelpLayout title={guide.title}>{guide.content}</HelpLayout>;
+}
